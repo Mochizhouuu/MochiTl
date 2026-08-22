@@ -133,6 +133,7 @@ object BuiltIns {
     val providers = listOf(
         ProviderConfig("gemini", "Google Gemini", "https://generativelanguage.googleapis.com", "gemini-2.0-flash", true, true),
         ProviderConfig("openai", "OpenAI", "https://api.openai.com", "gpt-4o-mini", true, true),
+        ProviderConfig("openaicompatible", "OpenAI Compatible", "https://api.openai.com/v1", "gpt-4o-mini", true, true),
         ProviderConfig("openrouter", "OpenRouter", "https://openrouter.ai/api", "openai/gpt-4o-mini", true, true),
         ProviderConfig("ollama", "Ollama", "http://127.0.0.1:11434", "llama3.2", false, true),
         ProviderConfig("lmstudio", "LM Studio", "http://127.0.0.1:1234", "local-model", false, true)

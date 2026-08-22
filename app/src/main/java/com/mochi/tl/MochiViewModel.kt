@@ -27,6 +27,8 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     val activeProject = MutableStateFlow<TranslationProject?>(null)
     val activePrompt = MutableStateFlow(BuiltIns.defaultPrompt)
 
+    val availableModels = MutableStateFlow<List<String>>(emptyList())
+
     var apiKey: String?
         get() = storage.apiKey(activeProvider.value.id)
         set(value) { if (value.isNullOrBlank()) storage.deleteApiKey(activeProvider.value.id) else storage.saveApiKey(activeProvider.value.id, value) }
@@ -35,9 +37,30 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         get() = storage.baseUrl(activeProvider.value.id)
         set(value) { if (value.isNullOrBlank()) storage.deleteBaseUrl(activeProvider.value.id) else storage.saveBaseUrl(activeProvider.value.id, value) }
 
+    var customModel: String?
+        get() = storage.model(activeProvider.value.id)
+        set(value) { if (value.isNullOrBlank()) storage.deleteModel(activeProvider.value.id) else storage.saveModel(activeProvider.value.id, value) }
+
+    fun storageModelFor(providerId: String): String? = storage.model(providerId)
+
     fun setInput(value: String) { _state.value = _state.value.copy(input = value, error = null) }
     fun setOutput(value: String) { _state.value = _state.value.copy(output = value) }
     fun selectProvider(provider: ProviderConfig) { activeProvider.value = provider }
+    fun setModelForActiveProvider(model: String) {
+        customModel = model
+    }
+
+    suspend fun fetchModelsForActiveProvider(): Result<List<String>> {
+        val currentProvider = activeProvider.value.let {
+            val customUrl = customBaseUrl
+            if (!customUrl.isNullOrBlank()) it.copy(baseUrl = customUrl) else it
+        }
+        val result = repository.fetchModels(currentProvider, apiKey)
+        if (result.isSuccess) {
+            availableModels.value = result.getOrDefault(emptyList())
+        }
+        return result
+    }
     fun selectProject(project: TranslationProject?) {
         activeProject.value = project
         project?.let { proj ->
@@ -70,9 +93,12 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 } else ""
 
                 val systemPrompt = prompt.content.replace("{target}", target) + glossaryContext
-                val currentProvider = activeProvider.value.let {
+                val currentProvider = activeProvider.value.let { prov ->
                     val customUrl = customBaseUrl
-                    if (!customUrl.isNullOrBlank()) it.copy(baseUrl = customUrl) else it
+                    val modelToUse = customModel?.takeIf { it.isNotBlank() } ?: prov.model
+                    var res = prov.copy(model = modelToUse)
+                    if (!customUrl.isNullOrBlank()) res = res.copy(baseUrl = customUrl)
+                    res
                 }
 
                 val chunks = source.chunked(4000)
@@ -97,9 +123,12 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun testConnection(): Result<Unit> {
-        val currentProvider = activeProvider.value.let {
+        val currentProvider = activeProvider.value.let { prov ->
             val customUrl = customBaseUrl
-            if (!customUrl.isNullOrBlank()) it.copy(baseUrl = customUrl) else it
+            val modelToUse = customModel?.takeIf { it.isNotBlank() } ?: prov.model
+            var res = prov.copy(model = modelToUse)
+            if (!customUrl.isNullOrBlank()) res = res.copy(baseUrl = customUrl)
+            res
         }
         return repository.testConnection(currentProvider, apiKey)
     }
