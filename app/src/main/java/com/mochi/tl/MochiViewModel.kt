@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import java.util.UUID
 
 class MochiViewModel(app: Application) : AndroidViewModel(app) {
@@ -138,6 +139,32 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteGlossaryItem(id: String) {
         glossary.value = glossary.value.filterNot { it.id == id }
         storage.saveGlossary(glossary.value)
+    }
+
+    fun exportGlossaryJson(): String {
+        return storage.json.encodeToString(glossary.value)
+    }
+
+    fun importGlossaryJson(jsonContent: String): Result<Int> = runCatching {
+        val importedList = storage.json.decodeFromString<List<GlossaryEntry>>(jsonContent)
+        val current = glossary.value.associateBy { it.id }.toMutableMap()
+        var addedCount = 0
+        for (item in importedList) {
+            val validItem = item.copy(
+                id = if (item.id.isBlank()) UUID.randomUUID().toString() else item.id,
+                source = item.source.trim(),
+                target = item.target.trim(),
+                note = item.note.trim()
+            )
+            if (validItem.source.isNotBlank() && validItem.target.isNotBlank()) {
+                current[validItem.id] = validItem
+                addedCount++
+            }
+        }
+        val newList = current.values.toList()
+        glossary.value = newList
+        storage.saveGlossary(newList)
+        addedCount
     }
 
     fun saveProject(project: TranslationProject) {

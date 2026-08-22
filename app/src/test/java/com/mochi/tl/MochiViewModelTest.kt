@@ -77,7 +77,15 @@ class MochiViewModelTest {
         viewModel.saveGlossaryItem(glossaryItem)
         assertTrue(viewModel.glossary.value.any { it.id == "glossary_1" })
 
+        val exportedJson = viewModel.exportGlossaryJson()
+        assertTrue(exportedJson.contains("Kue Mochi"))
+
         viewModel.deleteGlossaryItem("glossary_1")
         assertFalse(viewModel.glossary.value.any { it.id == "glossary_1" })
+
+        val importResult = viewModel.importGlossaryJson(exportedJson)
+        assertTrue(importResult.isSuccess)
+        assertEquals(1, importResult.getOrNull())
+        assertTrue(viewModel.glossary.value.any { it.id == "glossary_1" })
     }
 }

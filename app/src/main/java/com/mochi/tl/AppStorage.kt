@@ -17,7 +17,7 @@ class AppStorage(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     }.getOrElse { context.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE) }
-    private val json = Json { ignoreUnknownKeys = true }
+    val json = Json { ignoreUnknownKeys = true }
 
     fun saveApiKey(providerId: String, value: String) = secure.edit().putString("api_key_$providerId", value).apply()
     fun apiKey(providerId: String): String? = secure.getString("api_key_$providerId", null)
