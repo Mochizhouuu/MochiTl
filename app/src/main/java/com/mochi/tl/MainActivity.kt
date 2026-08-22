@@ -564,14 +564,8 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
     val context = LocalContext.current
     val clipboard = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
 
-    var sourceLanguage by remember { mutableStateOf("Jepang") }
+    var sourceLanguage by remember { mutableStateOf(LanguageOptions.AUTO_DETECT) }
     var targetLanguage by remember { mutableStateOf("Indonesia") }
-
-    val sourceLanguagePresets = listOf("Jepang", "Inggris", "Mandarin", "Korea", "Otomatis", "Indonesia", "Jerman", "Prancis", "Spanyol")
-    val targetLanguagePresets = listOf("Indonesia", "Inggris", "Jepang", "Mandarin", "Korea", "Jerman", "Prancis", "Spanyol")
-
-    var showSourceLangMenu by remember { mutableStateOf(false) }
-    var showTargetLangMenu by remember { mutableStateOf(false) }
 
     var showProviderMenu by remember { mutableStateOf(false) }
     var showPromptMenu by remember { mutableStateOf(false) }
@@ -719,44 +713,23 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Source Language Dropdown Box
-            ExposedDropdownMenuBox(
-                expanded = showSourceLangMenu,
-                onExpandedChange = { showSourceLangMenu = !showSourceLangMenu },
+            LanguageDropdownField(
+                label = "Sumber",
+                selectedValue = sourceLanguage,
+                options = LanguageOptions.SOURCE_LANGUAGES,
+                onValueChange = { sourceLanguage = it },
                 modifier = Modifier.weight(1f)
-            ) {
-                OutlinedTextField(
-                    value = sourceLanguage,
-                    onValueChange = { sourceLanguage = it },
-                    label = { Text("Sumber") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showSourceLangMenu) },
-                    modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = showSourceLangMenu,
-                    onDismissRequest = { showSourceLangMenu = false }
-                ) {
-                    sourceLanguagePresets.forEach { lang ->
-                        DropdownMenuItem(
-                            text = { Text(lang) },
-                            onClick = {
-                                sourceLanguage = lang
-                                showSourceLangMenu = false
-                            }
-                        )
-                    }
-                }
-            }
+            )
 
             FilledIconButton(
                 onClick = {
                     val temp = sourceLanguage
                     sourceLanguage = targetLanguage
-                    targetLanguage = temp
+                    targetLanguage = if (temp == LanguageOptions.AUTO_DETECT) {
+                        if (sourceLanguage == "Indonesia") "Jepang" else "Indonesia"
+                    } else {
+                        temp
+                    }
                 },
                 modifier = Modifier.size(44.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
@@ -770,38 +743,13 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 )
             }
 
-            // Target Language Dropdown Box
-            ExposedDropdownMenuBox(
-                expanded = showTargetLangMenu,
-                onExpandedChange = { showTargetLangMenu = !showTargetLangMenu },
+            LanguageDropdownField(
+                label = "Target",
+                selectedValue = targetLanguage,
+                options = LanguageOptions.TARGET_LANGUAGES,
+                onValueChange = { targetLanguage = it },
                 modifier = Modifier.weight(1f)
-            ) {
-                OutlinedTextField(
-                    value = targetLanguage,
-                    onValueChange = { targetLanguage = it },
-                    label = { Text("Target") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTargetLangMenu) },
-                    modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = showTargetLangMenu,
-                    onDismissRequest = { showTargetLangMenu = false }
-                ) {
-                    targetLanguagePresets.forEach { lang ->
-                        DropdownMenuItem(
-                            text = { Text(lang) },
-                            onClick = {
-                                targetLanguage = lang
-                                showTargetLangMenu = false
-                            }
-                        )
-                    }
-                }
-            }
+            )
         }
 
         // Source Text Input Field
@@ -1027,14 +975,8 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
     val state by vm.state.collectAsState()
     val context = LocalContext.current
 
-    var sourceLanguage by remember { mutableStateOf("Jepang") }
+    var sourceLanguage by remember { mutableStateOf(LanguageOptions.AUTO_DETECT) }
     var targetLanguage by remember { mutableStateOf("Indonesia") }
-
-    val sourceLanguagePresets = listOf("Jepang", "Inggris", "Mandarin", "Korea", "Otomatis", "Indonesia", "Jerman", "Prancis", "Spanyol")
-    val targetLanguagePresets = listOf("Indonesia", "Inggris", "Jepang", "Mandarin", "Korea", "Jerman", "Prancis", "Spanyol")
-
-    var showSourceLangMenu by remember { mutableStateOf(false) }
-    var showTargetLangMenu by remember { mutableStateOf(false) }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
@@ -1074,43 +1016,23 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ExposedDropdownMenuBox(
-                expanded = showSourceLangMenu,
-                onExpandedChange = { showSourceLangMenu = !showSourceLangMenu },
+            LanguageDropdownField(
+                label = "Sumber",
+                selectedValue = sourceLanguage,
+                options = LanguageOptions.SOURCE_LANGUAGES,
+                onValueChange = { sourceLanguage = it },
                 modifier = Modifier.weight(1f)
-            ) {
-                OutlinedTextField(
-                    value = sourceLanguage,
-                    onValueChange = { sourceLanguage = it },
-                    label = { Text("Sumber") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showSourceLangMenu) },
-                    modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = showSourceLangMenu,
-                    onDismissRequest = { showSourceLangMenu = false }
-                ) {
-                    sourceLanguagePresets.forEach { lang ->
-                        DropdownMenuItem(
-                            text = { Text(lang) },
-                            onClick = {
-                                sourceLanguage = lang
-                                showSourceLangMenu = false
-                            }
-                        )
-                    }
-                }
-            }
+            )
 
             FilledIconButton(
                 onClick = {
                     val temp = sourceLanguage
                     sourceLanguage = targetLanguage
-                    targetLanguage = temp
+                    targetLanguage = if (temp == LanguageOptions.AUTO_DETECT) {
+                        if (sourceLanguage == "Indonesia") "Jepang" else "Indonesia"
+                    } else {
+                        temp
+                    }
                 },
                 modifier = Modifier.size(44.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
@@ -1124,37 +1046,13 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
                 )
             }
 
-            ExposedDropdownMenuBox(
-                expanded = showTargetLangMenu,
-                onExpandedChange = { showTargetLangMenu = !showTargetLangMenu },
+            LanguageDropdownField(
+                label = "Target",
+                selectedValue = targetLanguage,
+                options = LanguageOptions.TARGET_LANGUAGES,
+                onValueChange = { targetLanguage = it },
                 modifier = Modifier.weight(1f)
-            ) {
-                OutlinedTextField(
-                    value = targetLanguage,
-                    onValueChange = { targetLanguage = it },
-                    label = { Text("Target") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTargetLangMenu) },
-                    modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = showTargetLangMenu,
-                    onDismissRequest = { showTargetLangMenu = false }
-                ) {
-                    targetLanguagePresets.forEach { lang ->
-                        DropdownMenuItem(
-                            text = { Text(lang) },
-                            onClick = {
-                                targetLanguage = lang
-                                showTargetLangMenu = false
-                            }
-                        )
-                    }
-                }
-            }
+            )
         }
 
         Button(
@@ -1461,11 +1359,11 @@ private fun ProjectEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = targetLang,
+                LanguageDropdownField(
+                    label = "Bahasa Target Utama",
+                    selectedValue = targetLang,
+                    options = LanguageOptions.TARGET_LANGUAGES,
                     onValueChange = { targetLang = it },
-                    label = { Text("Bahasa Target Utama") },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
