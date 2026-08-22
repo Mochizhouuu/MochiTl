@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,14 +21,16 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -39,9 +42,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,29 +95,35 @@ fun MochiAppTheme(
     content: @Composable () -> Unit
 ) {
     val lightColors = lightColorScheme(
-        primary = Color(0xFFC65F7A),
+        primary = Color(0xFF6750A4),
         onPrimary = Color.White,
-        primaryContainer = Color(0xFFFFD9E2),
-        onPrimaryContainer = Color(0xFF3E001D),
-        secondary = Color(0xFF76565D),
+        primaryContainer = Color(0xFFEADDFF),
+        onPrimaryContainer = Color(0xFF21005D),
+        secondary = Color(0xFF625B71),
         onSecondary = Color.White,
-        background = Color(0xFFFFF8FA),
-        surface = Color(0xFFFFF8FA),
-        surfaceVariant = Color(0xFFF2DDE1),
-        onSurfaceVariant = Color(0xFF514347)
+        secondaryContainer = Color(0xEFE7F0),
+        onSecondaryContainer = Color(0xFF1D192B),
+        tertiary = Color(0xFF7D5260),
+        background = Color(0xFFFEF7FF),
+        surface = Color(0xFFFEF7FF),
+        surfaceVariant = Color(0xFFE7E0EC),
+        onSurfaceVariant = Color(0xFF49454F)
     )
 
     val darkColors = darkColorScheme(
-        primary = Color(0xFFFFB1C8),
-        onPrimary = Color(0xFF5E1133),
-        primaryContainer = Color(0xFF7B2949),
-        onPrimaryContainer = Color(0xFFFFD9E2),
-        secondary = Color(0xFFE5BDC5),
-        onSecondary = Color(0xFF432930),
-        background = Color(0xFF1F1A1C),
-        surface = Color(0xFF1F1A1C),
-        surfaceVariant = Color(0xFF514347),
-        onSurfaceVariant = Color(0xFFD5C2C5)
+        primary = Color(0xD0BCFF),
+        onPrimary = Color(0xFF381E72),
+        primaryContainer = Color(0xFF4F378B),
+        onPrimaryContainer = Color(0xFFEADDFF),
+        secondary = Color(0xFFCCC2DC),
+        onSecondary = Color(0xFF332D41),
+        secondaryContainer = Color(0xFF4A4458),
+        onSecondaryContainer = Color(0xFFE8DEF8),
+        tertiary = Color(0xFFEFB8C8),
+        background = Color(0xFF141218),
+        surface = Color(0xFF141218),
+        surfaceVariant = Color(0xFF49454F),
+        onSurfaceVariant = Color(0xFFCAC4D0)
     )
 
     MaterialTheme(
@@ -136,6 +145,11 @@ fun MochiApp(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val activeProject by vm.activeProject.collectAsState()
+
+    // Pressing back on any screen returns to HOME instead of exiting the app
+    BackHandler(enabled = screen != Screen.HOME) {
+        screen = Screen.HOME
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -281,8 +295,14 @@ fun MochiApp(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
+                        if (screen != Screen.HOME) {
+                            IconButton(onClick = { screen = Screen.HOME }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali ke Beranda")
+                            }
+                        } else {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
+                            }
                         }
                     },
                     actions = {
@@ -334,10 +354,6 @@ private fun screenTitle(screen: Screen) = when (screen) {
 
 @Composable
 private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
-    val activeProvider by vm.activeProvider.collectAsState()
-    val activePrompt by vm.activePrompt.collectAsState()
-    val activeProject by vm.activeProject.collectAsState()
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -350,48 +366,30 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
                     painter = painterResource(R.drawable.mochitl_mascot),
                     contentDescription = "MochiTL Mascot",
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(90.dp)
                         .clip(RoundedCornerShape(16.dp))
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
                     text = "MochiTL Workspace",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Aplikasi Penerjemah AI untuk Novel, Manga, Manhwa & File",
+                    text = "Aplikasi Penerjemah AI untuk Novel, Manga, Manhwa & File Dokumen",
                     style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
-            }
-        }
-
-        // Active Context Card
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Status Konfigurasi Saat Ini", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                HorizontalDivider()
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Provider Active:", style = MaterialTheme.typography.bodyMedium)
-                    Text(activeProvider.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Prompt Mode:", style = MaterialTheme.typography.bodyMedium)
-                    Text(activePrompt.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Proyek Aktif:", style = MaterialTheme.typography.bodyMedium)
-                    Text(activeProject?.name ?: "Tanpa Proyek", fontWeight = FontWeight.Bold)
-                }
             }
         }
 
@@ -474,8 +472,6 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
     val activeProvider by vm.activeProvider.collectAsState()
     val prompts by vm.prompts.collectAsState()
     val activePrompt by vm.activePrompt.collectAsState()
-    val projects by vm.projects.collectAsState()
-    val activeProject by vm.activeProject.collectAsState()
 
     val context = LocalContext.current
     val clipboard = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
@@ -485,8 +481,6 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
 
     var showProviderMenu by remember { mutableStateOf(false) }
     var showPromptMenu by remember { mutableStateOf(false) }
-
-    val languages = listOf("Jepang", "Inggris", "Korea", "Mandarin", "Indonesia", "Deteksi Otomatis")
 
     Column(
         modifier = Modifier
@@ -499,7 +493,6 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Provider Dropdown Chip
             ExposedDropdownMenuBox(
                 expanded = showProviderMenu,
                 onExpandedChange = { showProviderMenu = !showProviderMenu },
@@ -540,7 +533,6 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 }
             }
 
-            // Prompt Dropdown Chip
             ExposedDropdownMenuBox(
                 expanded = showPromptMenu,
                 onExpandedChange = { showPromptMenu = !showPromptMenu },
@@ -624,7 +616,6 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
             ) {
                 val charCount = state.input.length
                 val wordCount = if (state.input.isBlank()) 0 else state.input.trim().split("\\s+".toRegex()).size
-                val estimatedChunks = (charCount / 4000) + 1
 
                 Text(
                     text = "Teks Sumber ($charCount kar / $wordCount kata)",
@@ -1572,23 +1563,112 @@ private fun DocumentationScreen() {
         "Keamanan Key" to "Seluruh API Key disimpan secara aman menggunakan EncryptedSharedPreferences yang dilindungi Android Keystore hardware-backed."
     )
 
-    LazyColumn(
+    val pagerState = rememberPagerState(pageCount = { docs.size })
+    val scope = rememberCoroutineScope()
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            Text("Dokumentasi & Panduan MochiTL", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(
+            text = "Dokumentasi & Panduan MochiTL",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        // Carousel Slider
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) { page ->
+            val (title, content) = docs[page]
+            Card(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = "Topik ${page + 1} dari ${docs.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    HorizontalDivider()
+
+                    Text(
+                        text = content,
+                        style = MaterialTheme.typography.bodyLarge,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
-        items(docs) { (title, content) ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    HorizontalDivider()
-                    Text(content, style = MaterialTheme.typography.bodyMedium)
+        // Pager Indicator Dots & Navigation Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    if (pagerState.currentPage > 0) {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                    }
+                },
+                enabled = pagerState.currentPage > 0
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Sebelumnya")
+            }
+
+            // Dot indicators
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(docs.size) { index ->
+                    val isSelected = pagerState.currentPage == index
+                    Box(
+                        modifier = Modifier
+                            .size(if (isSelected) 10.dp else 6.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                    )
                 }
+            }
+
+            IconButton(
+                onClick = {
+                    if (pagerState.currentPage < docs.size - 1) {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                    }
+                },
+                enabled = pagerState.currentPage < docs.size - 1
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Selanjutnya")
             }
         }
     }
