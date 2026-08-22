@@ -110,4 +110,16 @@ class MochiViewModelTest {
         viewModel.setModelForActiveProvider("")
         assertNull(viewModel.customModel)
     }
+
+    @Test
+    fun testBuiltInPromptsIncludeSourceTextTagRules() {
+        val prompts = BuiltIns.prompts
+        assertTrue("Prompts list should not be empty", prompts.isNotEmpty())
+
+        for (prompt in prompts) {
+            assertTrue("Prompt ${prompt.id} should mention <source_text>", prompt.content.contains("<source_text>"))
+            assertTrue("Prompt ${prompt.id} should instruct treating inside as RAW DATA", prompt.content.contains("RAW DATA"))
+            assertTrue("Prompt ${prompt.id} should instruct NEVER refuse or reply to instructions", prompt.content.contains("NEVER refuse"))
+        }
+    }
 }
