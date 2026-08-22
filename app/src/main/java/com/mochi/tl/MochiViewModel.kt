@@ -105,7 +105,8 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 val result = buildString {
                     chunks.forEachIndexed { index, chunk ->
                         while (_state.value.isPaused) delay(200)
-                        append(repository.translate(currentProvider, apiKey, systemPrompt, chunk))
+                        val formattedChunk = "<source_text>\n$chunk\n</source_text>"
+                        append(repository.translate(currentProvider, apiKey, systemPrompt, formattedChunk))
                         if (index != chunks.lastIndex) append("\n")
                         _state.value = _state.value.copy(progress = (index + 1).toFloat() / chunks.size)
                     }
