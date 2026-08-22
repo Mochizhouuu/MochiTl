@@ -20,45 +20,134 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     val projects = MutableStateFlow(storage.projects())
     val prompts = MutableStateFlow(storage.prompts())
     val history = MutableStateFlow(storage.history())
+    val glossary = MutableStateFlow(storage.glossary())
     val providers = MutableStateFlow(BuiltIns.providers)
     val activeProvider = MutableStateFlow(BuiltIns.providers.first())
+    val activeProject = MutableStateFlow<TranslationProject?>(null)
+    val activePrompt = MutableStateFlow(BuiltIns.defaultPrompt)
+
     var apiKey: String?
         get() = storage.apiKey(activeProvider.value.id)
         set(value) { if (value.isNullOrBlank()) storage.deleteApiKey(activeProvider.value.id) else storage.saveApiKey(activeProvider.value.id, value) }
 
+    var customBaseUrl: String?
+        get() = storage.baseUrl(activeProvider.value.id)
+        set(value) { if (value.isNullOrBlank()) storage.deleteBaseUrl(activeProvider.value.id) else storage.saveBaseUrl(activeProvider.value.id, value) }
+
     fun setInput(value: String) { _state.value = _state.value.copy(input = value, error = null) }
+    fun setOutput(value: String) { _state.value = _state.value.copy(output = value) }
     fun selectProvider(provider: ProviderConfig) { activeProvider.value = provider }
-    fun translate(prompt: PromptTemplate = BuiltIns.defaultPrompt, source: String = _state.value.input, target: String = "Indonesian") {
+    fun selectProject(project: TranslationProject?) {
+        activeProject.value = project
+        project?.let { proj ->
+            prompts.value.find { it.id == proj.promptTemplateId }?.let { activePrompt.value = it }
+            providers.value.find { it.id == proj.providerId }?.let { activeProvider.value = it }
+        }
+    }
+    fun selectPrompt(prompt: PromptTemplate) { activePrompt.value = prompt }
+
+    fun translate(
+        prompt: PromptTemplate = activePrompt.value,
+        source: String = _state.value.input,
+        target: String = "Indonesia",
+        project: TranslationProject? = activeProject.value
+    ) {
         job?.cancel()
         job = viewModelScope.launch {
             _state.value = _state.value.copy(input = source, isTranslating = true, isPaused = false, error = null, progress = 0f)
             try {
-                val glossary = ""
-                val system = prompt.content.replace("{target}", target) + if (glossary.isBlank()) "" else "\nGlossary:\n$glossary"
-                val chunks = source.chunked(6000)
+                val glossaryList = glossary.value
+                val activeGlossary = if (project != null && project.glossaryIds.isNotEmpty()) {
+                    glossaryList.filter { it.id in project.glossaryIds }
+                } else {
+                    glossaryList
+                }
+
+                val glossaryContext = if (activeGlossary.isNotEmpty()) {
+                    "\n\nGlossary Mapping (Strictly enforce these exact term translations):\n" +
+                            activeGlossary.joinToString("\n") { "- ${it.source} -> ${it.target}" + if (it.note.isNotBlank()) " (${it.note})" else "" }
+                } else ""
+
+                val systemPrompt = prompt.content.replace("{target}", target) + glossaryContext
+                val currentProvider = activeProvider.value.let {
+                    val customUrl = customBaseUrl
+                    if (!customUrl.isNullOrBlank()) it.copy(baseUrl = customUrl) else it
+                }
+
+                val chunks = source.chunked(4000)
                 val result = buildString {
                     chunks.forEachIndexed { index, chunk ->
                         while (_state.value.isPaused) delay(200)
-                        append(repository.translate(activeProvider.value, apiKey, system, chunk))
+                        append(repository.translate(currentProvider, apiKey, systemPrompt, chunk))
                         if (index != chunks.lastIndex) append("\n")
                         _state.value = _state.value.copy(progress = (index + 1).toFloat() / chunks.size)
                     }
                 }
                 _state.value = _state.value.copy(output = result, isTranslating = false, progress = 1f)
-                if (storage.autoSaveHistory) {
-                    val updated = listOf(TranslationRecord(UUID.randomUUID().toString(), source.take(120), result, "auto", target, activeProvider.value.id)) + history.value
-                    history.value = updated.take(100); storage.saveHistory(history.value)
+                if (storage.autoSaveHistory && result.isNotBlank()) {
+                    val updated = listOf(TranslationRecord(UUID.randomUUID().toString(), source.take(120), result, "auto", target, currentProvider.id)) + history.value
+                    history.value = updated.take(100)
+                    storage.saveHistory(history.value)
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(isTranslating = false, error = e.message ?: "Translation failed")
+                _state.value = _state.value.copy(isTranslating = false, error = e.message ?: "Terjemahan gagal")
             }
         }
     }
+
+    suspend fun testConnection(): Result<Unit> {
+        val currentProvider = activeProvider.value.let {
+            val customUrl = customBaseUrl
+            if (!customUrl.isNullOrBlank()) it.copy(baseUrl = customUrl) else it
+        }
+        return repository.testConnection(currentProvider, apiKey)
+    }
+
     fun pause() { _state.value = _state.value.copy(isPaused = true) }
     fun resume() { _state.value = _state.value.copy(isPaused = false) }
     fun cancel() { job?.cancel(); _state.value = _state.value.copy(isTranslating = false, isPaused = false, progress = 0f) }
-    fun savePrompt(prompt: PromptTemplate) { prompts.value = (prompts.value.filterNot { it.id == prompt.id } + prompt); storage.savePrompts(prompts.value) }
-    fun saveProject(project: TranslationProject) { projects.value = (projects.value.filterNot { it.id == project.id } + project); storage.saveProjects(projects.value) }
+
+    fun savePrompt(prompt: PromptTemplate) {
+        prompts.value = (prompts.value.filterNot { it.id == prompt.id } + prompt)
+        storage.savePrompts(prompts.value)
+    }
+    fun deletePrompt(id: String) {
+        prompts.value = prompts.value.filterNot { it.id == id || it.isBuiltIn }
+        storage.savePrompts(prompts.value)
+    }
+    fun resetPromptsToDefault() {
+        prompts.value = BuiltIns.prompts
+        storage.savePrompts(prompts.value)
+    }
+
+    fun saveGlossaryItem(entry: GlossaryEntry) {
+        glossary.value = (glossary.value.filterNot { it.id == entry.id } + entry)
+        storage.saveGlossary(glossary.value)
+    }
+    fun deleteGlossaryItem(id: String) {
+        glossary.value = glossary.value.filterNot { it.id == id }
+        storage.saveGlossary(glossary.value)
+    }
+
+    fun saveProject(project: TranslationProject) {
+        projects.value = (projects.value.filterNot { it.id == project.id } + project)
+        storage.saveProjects(projects.value)
+    }
+    fun deleteProject(id: String) {
+        projects.value = projects.value.filterNot { it.id == id }
+        storage.saveProjects(projects.value)
+        if (activeProject.value?.id == id) activeProject.value = null
+    }
+
+    fun deleteHistoryItem(id: String) {
+        history.value = history.value.filterNot { it.id == id }
+        storage.saveHistory(history.value)
+    }
+    fun clearHistory() {
+        history.value = emptyList()
+        storage.saveHistory(emptyList())
+    }
+
     fun setAutoSave(value: Boolean) { storage.autoSaveHistory = value }
     fun autoSave(): Boolean = storage.autoSaveHistory
 }
