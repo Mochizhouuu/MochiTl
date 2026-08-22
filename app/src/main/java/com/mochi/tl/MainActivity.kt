@@ -478,42 +478,57 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
     var showProviderMenu by remember { mutableStateOf(false) }
     var showPromptMenu by remember { mutableStateOf(false) }
 
-    val languages = listOf("Jepang", "Inggris", "Korea", "Mandarin", "Indonesia", "Deteksi Otomatis")
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Top Toolbar: Quick Provider & Prompt selectors
+        // Top Toolbar: Quick Provider & Prompt selectors with improved dropdown cards
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Provider Dropdown Chip
+            // Provider Dropdown Card
             ExposedDropdownMenuBox(
                 expanded = showProviderMenu,
                 onExpandedChange = { showProviderMenu = !showProviderMenu },
                 modifier = Modifier.weight(1f)
             ) {
                 OutlinedCard(
-                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
-                    onClick = { showProviderMenu = true }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                    onClick = { showProviderMenu = true },
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = activeProvider.name,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = activeProvider.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showProviderMenu)
                     }
                 }
                 ExposedDropdownMenu(
@@ -522,7 +537,7 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 ) {
                     providers.forEach { prov ->
                         DropdownMenuItem(
-                            text = { Text(prov.name) },
+                            text = { Text(prov.name, fontWeight = if (prov.id == activeProvider.id) FontWeight.Bold else FontWeight.Normal) },
                             onClick = {
                                 vm.selectProvider(prov)
                                 showProviderMenu = false
@@ -532,29 +547,46 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 }
             }
 
-            // Prompt Dropdown Chip
+            // Prompt Dropdown Card
             ExposedDropdownMenuBox(
                 expanded = showPromptMenu,
                 onExpandedChange = { showPromptMenu = !showPromptMenu },
                 modifier = Modifier.weight(1f)
             ) {
                 OutlinedCard(
-                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
-                    onClick = { showPromptMenu = true }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                    onClick = { showPromptMenu = true },
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = activePrompt.name,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = activePrompt.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showPromptMenu)
                     }
                 }
                 ExposedDropdownMenu(
@@ -563,7 +595,7 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 ) {
                     prompts.forEach { p ->
                         DropdownMenuItem(
-                            text = { Text(p.name) },
+                            text = { Text(p.name, fontWeight = if (p.id == activePrompt.id) FontWeight.Bold else FontWeight.Normal) },
                             onClick = {
                                 vm.selectPrompt(p)
                                 showPromptMenu = false
@@ -585,17 +617,26 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 onValueChange = { sourceLanguage = it },
                 modifier = Modifier.weight(1f),
                 label = { Text("Sumber") },
-                singleLine = true
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp)
             )
 
-            IconButton(
+            FilledIconButton(
                 onClick = {
                     val temp = sourceLanguage
                     sourceLanguage = targetLanguage
                     targetLanguage = temp
-                }
+                },
+                modifier = Modifier.size(44.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             ) {
-                Icon(Icons.Default.SwapHoriz, contentDescription = "Tukar Bahasa")
+                Icon(
+                    Icons.Default.SwapHoriz,
+                    contentDescription = "Tukar Bahasa",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             OutlinedTextField(
@@ -603,40 +644,52 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 onValueChange = { targetLanguage = it },
                 modifier = Modifier.weight(1f),
                 label = { Text("Target") },
-                singleLine = true
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp)
             )
         }
 
         // Source Text Input Field
         Column(modifier = Modifier.weight(1f)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val charCount = state.input.length
                 val wordCount = if (state.input.isBlank()) 0 else state.input.trim().split("\\s+".toRegex()).size
-                val estimatedChunks = (charCount / 4000) + 1
 
                 Text(
                     text = "Teks Sumber ($charCount kar / $wordCount kata)",
                     style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Row {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (state.input.isNotBlank()) {
-                        IconButton(onClick = { vm.setInput("") }, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Clear, contentDescription = "Hapus", modifier = Modifier.size(18.dp))
+                        IconButton(
+                            onClick = { vm.setInput("") }
+                        ) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Hapus Input",
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                     IconButton(
                         onClick = {
                             clipboard.primaryClip?.getItemAt(0)?.text?.let { vm.setInput(it.toString()) }
-                        },
-                        modifier = Modifier.size(28.dp)
+                        }
                     ) {
-                        Icon(Icons.Default.ContentPaste, contentDescription = "Tempel", modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.ContentPaste,
+                            contentDescription = "Tempel Clipboard",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -647,67 +700,96 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                shape = RoundedCornerShape(12.dp),
                 placeholder = { Text("Tempel atau ketik teks yang ingin diterjemahkan di sini...") }
             )
         }
 
         // Progress or Error Message
         if (state.error != null) {
-            Text(
-                text = "Error: ${state.error}",
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-
-        if (state.isTranslating) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = if (state.isPaused) "Penerjemahan dijeda..." else "Menerjemahkan per chunk...",
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                    Text(
-                        text = "${(state.progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                LinearProgressIndicator(
-                    progress = { state.progress },
-                    modifier = Modifier.fillMaxWidth()
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Error: ${state.error}",
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(12.dp)
                 )
             }
         }
 
-        // Action Controls (Translate, Pause, Cancel)
+        if (state.isTranslating) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (state.isPaused) "Penerjemahan dijeda..." else "Menerjemahkan per chunk...",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${(state.progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                )
+            }
+        }
+
+        // Action Controls (Translate, Pause, Cancel) with clear sizing and padding
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
                 onClick = { vm.translate(target = targetLanguage) },
                 enabled = state.input.isNotBlank() && !state.isTranslating,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Terjemahkan")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Terjemahkan", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
 
             if (state.isTranslating) {
-                OutlinedButton(onClick = { if (state.isPaused) vm.resume() else vm.pause() }) {
+                FilledTonalButton(
+                    onClick = { if (state.isPaused) vm.resume() else vm.pause() },
+                    modifier = Modifier.height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Icon(if (state.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(if (state.isPaused) "Lanjut" else "Jeda")
                 }
 
-                OutlinedButton(onClick = vm::cancel) {
+                OutlinedButton(
+                    onClick = vm::cancel,
+                    modifier = Modifier.height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
                     Icon(Icons.Default.Stop, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text("Batal")
                 }
             }
@@ -716,13 +798,16 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
         // Translated Result Output Field
         Column(modifier = Modifier.weight(1f)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Hasil Terjemahan",
                     style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -732,10 +817,9 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                             onClick = {
                                 clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", state.output))
                                 Toast.makeText(context, "Teks disalin ke clipboard", Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.size(28.dp)
+                            }
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Salin", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Salin Hasil", tint = MaterialTheme.colorScheme.primary)
                         }
 
                         IconButton(
@@ -746,19 +830,17 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                                     type = "text/plain"
                                 }
                                 context.startActivity(Intent.createChooser(sendIntent, "Bagikan Terjemahan"))
-                            },
-                            modifier = Modifier.size(28.dp)
+                            }
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = "Bagikan", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Share, contentDescription = "Bagikan Hasil", tint = MaterialTheme.colorScheme.primary)
                         }
 
                         IconButton(
                             onClick = {
                                 (context as? MainActivity)?.exportText("terjemahan_${System.currentTimeMillis()}.txt", state.output)
-                            },
-                            modifier = Modifier.size(28.dp)
+                            }
                         ) {
-                            Icon(Icons.Default.FileDownload, contentDescription = "Simpan", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.FileDownload, contentDescription = "Simpan File", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -770,6 +852,7 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                shape = RoundedCornerShape(12.dp),
                 readOnly = false,
                 placeholder = { Text("Hasil terjemahan AI akan muncul di sini...") }
             )
@@ -798,7 +881,10 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
@@ -807,26 +893,33 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
                 }
                 Text(
                     text = "Pilih file teks (.txt) untuk diterjemahkan secara otomatis per-chunk dengan context prompt & glossary aktif.",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
         Button(
             onClick = { filePicker.launch(arrayOf("text/plain")) },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(12.dp)
         ) {
             Icon(Icons.Default.FolderOpen, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text(if (fileName == null) "Buka File Teks (.txt)" else "File: $fileName")
+            Text(if (fileName == null) "Buka File Teks (.txt)" else "File: $fileName", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
 
         if (fileText.isNotBlank()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Info File Loaded:", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                    Text("Ukuran Karakter: ${fileText.length} karakter")
-                    Text("Estimasi Chunk API: ~${(fileText.length / 4000) + 1} bagian")
+                    Text("Ukuran Karakter: ${fileText.length} karakter", style = MaterialTheme.typography.bodyMedium)
+                    Text("Estimasi Chunk API: ~${(fileText.length / 4000) + 1} bagian", style = MaterialTheme.typography.bodyMedium)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Text("Pratinjau Teks Asli:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(fileText.take(300) + if (fileText.length > 300) "..." else "", style = MaterialTheme.typography.bodySmall)
@@ -836,31 +929,68 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
             Button(
                 onClick = { vm.translate(source = fileText) },
                 enabled = !state.isTranslating,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Proses Terjemahkan File")
+                Text("Proses Terjemahkan File", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
 
         if (state.isTranslating) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Progres Terjemahan File: ${(state.progress * 100).toInt()}%")
-                LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { if (state.isPaused) vm.resume() else vm.pause() }) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Progres Terjemahan File", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    Text("${(state.progress * 100).toInt()}%", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                LinearProgressIndicator(
+                    progress = { state.progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = { if (state.isPaused) vm.resume() else vm.pause() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
                         Text(if (state.isPaused) "Lanjutkan" else "Jeda")
                     }
-                    OutlinedButton(onClick = vm::cancel) { Text("Batal") }
+                    OutlinedButton(
+                        onClick = vm::cancel,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Batal")
+                    }
                 }
             }
         }
 
         if (state.output.isNotBlank()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Pratinjau Hasil Terjemahan Dokumen:", fontWeight = FontWeight.Bold)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Pratinjau Hasil Terjemahan Dokumen:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     Text(state.output.take(800) + if (state.output.length > 800) "\n..." else "", style = MaterialTheme.typography.bodyMedium)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Button(
@@ -868,11 +998,14 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
                             val name = "terjemahan_${fileName?.removeSuffix(".txt") ?: "file"}.txt"
                             (context as? MainActivity)?.exportText(name, state.output)
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.FileDownload, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Simpan File Terjemahan Lengkap")
+                        Text("Simpan File Terjemahan Lengkap", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -903,10 +1036,13 @@ private fun ProjectsScreen(vm: MochiViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Daftar Proyek", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Button(onClick = { editingProject = null; showDialog = true }) {
+            Button(
+                onClick = { editingProject = null; showDialog = true },
+                shape = RoundedCornerShape(10.dp)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Tambah Proyek")
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Tambah Proyek", fontWeight = FontWeight.SemiBold)
             }
         }
 
@@ -927,9 +1063,10 @@ private fun ProjectsScreen(vm: MochiViewModel) {
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     colors = if (isActive) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -937,7 +1074,7 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                         ) {
                             Text(proj.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             if (isActive) {
-                                SuggestionChip(onClick = {}, label = { Text("AKTIF") })
+                                SuggestionChip(onClick = {}, label = { Text("AKTIF", fontWeight = FontWeight.Bold) })
                             }
                         }
 
@@ -945,23 +1082,34 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                             Text(proj.description, style = MaterialTheme.typography.bodyMedium)
                         }
 
-                        Text("Prompt: $promptName • Provider: $providerName • Target: ${proj.targetLanguage}", style = MaterialTheme.typography.bodySmall)
+                        Text("Prompt: $promptName • Provider: $providerName • Target: ${proj.targetLanguage}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (!isActive) {
-                                TextButton(onClick = { vm.selectProject(proj) }) { Text("Aktifkan") }
+                                FilledTonalButton(
+                                    onClick = { vm.selectProject(proj) },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) { Text("Aktifkan Proyek") }
                             } else {
-                                TextButton(onClick = { vm.selectProject(null) }) { Text("Nonaktifkan") }
+                                OutlinedButton(
+                                    onClick = { vm.selectProject(null) },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) { Text("Nonaktifkan") }
                             }
-                            IconButton(onClick = { editingProject = proj; showDialog = true }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit")
-                            }
-                            IconButton(onClick = { vm.deleteProject(proj.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                IconButton(onClick = { editingProject = proj; showDialog = true }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit Proyek")
+                                }
+                                IconButton(onClick = { vm.deleteProject(proj.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Hapus Proyek", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     }
@@ -1070,14 +1218,20 @@ private fun PromptScreen(vm: MochiViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Pengelola Prompt", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedButton(onClick = { vm.resetPromptsToDefault() }) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { vm.resetPromptsToDefault() },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
                     Text("Reset")
                 }
-                Button(onClick = { editingPrompt = null; showEditDialog = true }) {
+                Button(
+                    onClick = { editingPrompt = null; showEditDialog = true },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Tambah")
+                    Text("Tambah", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -1087,8 +1241,11 @@ private fun PromptScreen(vm: MochiViewModel) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(prompts) { p ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1097,7 +1254,7 @@ private fun PromptScreen(vm: MochiViewModel) {
                             Text(p.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             SuggestionChip(
                                 onClick = {},
-                                label = { Text(if (p.isBuiltIn) "Built-in" else "Kustom") }
+                                label = { Text(if (p.isBuiltIn) "Built-in" else "Kustom", fontWeight = FontWeight.Medium) }
                             )
                         }
 
@@ -1106,12 +1263,18 @@ private fun PromptScreen(vm: MochiViewModel) {
                         Text(p.content, style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
 
                         if (!p.isBuiltIn) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 IconButton(onClick = { editingPrompt = p; showEditDialog = true }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit Prompt")
                                 }
                                 IconButton(onClick = { vm.deletePrompt(p.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
+                                    Icon(Icons.Default.Delete, contentDescription = "Hapus Prompt", tint = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
@@ -1206,10 +1369,13 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Glosarium Istilah", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Button(onClick = { editingEntry = null; showDialog = true }) {
+            Button(
+                onClick = { editingEntry = null; showDialog = true },
+                shape = RoundedCornerShape(10.dp)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Tambah Istilah")
+                Text("Tambah Istilah", fontWeight = FontWeight.SemiBold)
             }
         }
 
@@ -1217,6 +1383,7 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
             placeholder = { Text("Cari istilah glosarium...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true
@@ -1233,19 +1400,22 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             }
 
             items(filtered) { entry ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(entry.source, fontWeight = FontWeight.Bold)
+                                Text(entry.source, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                                 Text("  ➔  ", color = MaterialTheme.colorScheme.primary)
-                                Text(entry.target, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(entry.target, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyLarge)
                             }
                             if (entry.note.isNotBlank()) {
                                 Text("Catatan: ${entry.note}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1254,10 +1424,10 @@ private fun GlossaryScreen(vm: MochiViewModel) {
 
                         Row {
                             IconButton(onClick = { editingEntry = entry; showDialog = true }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Istilah")
                             }
                             IconButton(onClick = { vm.deleteGlossaryItem(entry.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Delete, contentDescription = "Hapus Istilah", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -1342,7 +1512,10 @@ private fun HistoryScreen(
         ) {
             Text("Riwayat Terjemahan", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             if (history.isNotEmpty()) {
-                OutlinedButton(onClick = { vm.clearHistory() }) {
+                OutlinedButton(
+                    onClick = { vm.clearHistory() },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
                     Icon(Icons.Default.DeleteSweep, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Bersihkan")
@@ -1361,8 +1534,11 @@ private fun HistoryScreen(
             }
 
             items(history) { record ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = record.sourcePreview,
                             style = MaterialTheme.typography.bodySmall,
@@ -1380,26 +1556,36 @@ private fun HistoryScreen(
                         Text(
                             text = "Provider: ${record.providerId} • Target: ${record.targetLanguage}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
                         )
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(onClick = { onSelectHistoryItem(record.translatedText) }) {
+                            FilledTonalButton(
+                                onClick = { onSelectHistoryItem(record.translatedText) },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
                                 Text("Buka di Editor")
                             }
-                            IconButton(
-                                onClick = {
-                                    clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", record.translatedText))
-                                    Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                IconButton(
+                                    onClick = {
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", record.translatedText))
+                                        Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Salin")
                                 }
-                            ) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Salin")
-                            }
-                            IconButton(onClick = { vm.deleteHistoryItem(record.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
+                                IconButton(onClick = { vm.deleteHistoryItem(record.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     }
@@ -1511,16 +1697,19 @@ private fun SettingsScreen(vm: MochiViewModel) {
                 }
             },
             enabled = !isTesting,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(12.dp)
         ) {
             if (isTesting) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Menguji Koneksi...")
+                Text("Menguji Koneksi...", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             } else {
                 Icon(Icons.Default.CheckCircle, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Uji Koneksi API")
+                Text("Uji Koneksi API", fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
 
