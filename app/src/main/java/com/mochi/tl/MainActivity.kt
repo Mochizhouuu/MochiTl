@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,7 +21,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -92,29 +96,33 @@ fun MochiAppTheme(
     content: @Composable () -> Unit
 ) {
     val lightColors = lightColorScheme(
-        primary = Color(0xFFC65F7A),
+        primary = Color(0xFF6750A4),
         onPrimary = Color.White,
-        primaryContainer = Color(0xFFFFD9E2),
-        onPrimaryContainer = Color(0xFF3E001D),
-        secondary = Color(0xFF76565D),
+        primaryContainer = Color(0xFFEADDFF),
+        onPrimaryContainer = Color(0xFF21005D),
+        secondary = Color(0xFF625B71),
         onSecondary = Color.White,
-        background = Color(0xFFFFF8FA),
-        surface = Color(0xFFFFF8FA),
-        surfaceVariant = Color(0xFFF2DDE1),
-        onSurfaceVariant = Color(0xFF514347)
+        secondaryContainer = Color(0xFFE8DEF8),
+        onSecondaryContainer = Color(0xFF1D192B),
+        background = Color(0xFFFBF8FD),
+        surface = Color(0xFFFBF8FD),
+        surfaceVariant = Color(0xFFE7E0EC),
+        onSurfaceVariant = Color(0xFF49454F)
     )
 
     val darkColors = darkColorScheme(
-        primary = Color(0xFFFFB1C8),
-        onPrimary = Color(0xFF5E1133),
-        primaryContainer = Color(0xFF7B2949),
-        onPrimaryContainer = Color(0xFFFFD9E2),
-        secondary = Color(0xFFE5BDC5),
-        onSecondary = Color(0xFF432930),
-        background = Color(0xFF1F1A1C),
-        surface = Color(0xFF1F1A1C),
-        surfaceVariant = Color(0xFF514347),
-        onSurfaceVariant = Color(0xFFD5C2C5)
+        primary = Color(0xFFD0BCFF),
+        onPrimary = Color(0xFF381E72),
+        primaryContainer = Color(0xFF4F378B),
+        onPrimaryContainer = Color(0xFFEADDFF),
+        secondary = Color(0xFFCCC2DC),
+        onSecondary = Color(0xFF332D41),
+        secondaryContainer = Color(0xFF4A4458),
+        onSecondaryContainer = Color(0xFFE8DEF8),
+        background = Color(0xFF141218),
+        surface = Color(0xFF141218),
+        surfaceVariant = Color(0xFF49454F),
+        onSurfaceVariant = Color(0xFFCAC4D0)
     )
 
     MaterialTheme(
@@ -136,6 +144,14 @@ fun MochiApp(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val activeProject by vm.activeProject.collectAsState()
+
+    BackHandler(enabled = drawerState.isOpen || screen != Screen.HOME) {
+        if (drawerState.isOpen) {
+            scope.launch { drawerState.close() }
+        } else if (screen != Screen.HOME) {
+            screen = Screen.HOME
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -334,10 +350,6 @@ private fun screenTitle(screen: Screen) = when (screen) {
 
 @Composable
 private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
-    val activeProvider by vm.activeProvider.collectAsState()
-    val activePrompt by vm.activePrompt.collectAsState()
-    val activeProject by vm.activeProject.collectAsState()
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -372,26 +384,6 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
-            }
-        }
-
-        // Active Context Card
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Status Konfigurasi Saat Ini", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                HorizontalDivider()
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Provider Active:", style = MaterialTheme.typography.bodyMedium)
-                    Text(activeProvider.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Prompt Mode:", style = MaterialTheme.typography.bodyMedium)
-                    Text(activePrompt.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Proyek Aktif:", style = MaterialTheme.typography.bodyMedium)
-                    Text(activeProject?.name ?: "Tanpa Proyek", fontWeight = FontWeight.Bold)
-                }
             }
         }
 
@@ -1572,23 +1564,114 @@ private fun DocumentationScreen() {
         "Keamanan Key" to "Seluruh API Key disimpan secara aman menggunakan EncryptedSharedPreferences yang dilindungi Android Keystore hardware-backed."
     )
 
-    LazyColumn(
+    val pagerState = rememberPagerState(pageCount = { docs.size })
+    val scope = rememberCoroutineScope()
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            Text("Dokumentasi & Panduan MochiTL", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Dokumentasi & Panduan", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = "${pagerState.currentPage + 1} / ${docs.size}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
         }
 
-        items(docs) { (title, content) ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    HorizontalDivider()
-                    Text(content, style = MaterialTheme.typography.bodyMedium)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) { page ->
+            val (title, content) = docs[page]
+            Card(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                    Text(
+                        text = content,
+                        style = MaterialTheme.typography.bodyLarge,
+                        lineHeight = 24.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
+            }
+        }
+
+        // Page Indicator dots and Next/Prev controls
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    if (pagerState.currentPage > 0) {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                    }
+                },
+                enabled = pagerState.currentPage > 0
+            ) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = "Sebelumnya")
+            }
+
+            // Indicator Dots
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(docs.size) { index ->
+                    val isSelected = pagerState.currentPage == index
+                    Box(
+                        modifier = Modifier
+                            .size(if (isSelected) 10.dp else 8.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = {
+                    if (pagerState.currentPage < docs.size - 1) {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                    }
+                },
+                enabled = pagerState.currentPage < docs.size - 1
+            ) {
+                Icon(Icons.Default.ChevronRight, contentDescription = "Berikutnya")
             }
         }
     }
