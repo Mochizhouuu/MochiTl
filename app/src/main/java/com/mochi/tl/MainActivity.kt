@@ -144,12 +144,22 @@ fun MochiApp(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val activeProject by vm.activeProject.collectAsState()
+    val context = LocalContext.current
+    var backPressedTime by remember { mutableLongStateOf(0L) }
 
-    BackHandler(enabled = drawerState.isOpen || screen != Screen.HOME) {
+    BackHandler(enabled = true) {
         if (drawerState.isOpen) {
             scope.launch { drawerState.close() }
         } else if (screen != Screen.HOME) {
             screen = Screen.HOME
+        } else {
+            val currentTime = System.currentTimeMillis()
+            if (currentTime - backPressedTime < 2000) {
+                (context as? android.app.Activity)?.finish()
+            } else {
+                backPressedTime = currentTime
+                Toast.makeText(context, "Tekan sekali lagi untuk keluar", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -1147,34 +1157,153 @@ private fun ProjectEditDialog(
     var description by remember { mutableStateOf(project?.description.orEmpty()) }
     var selectedPromptId by remember { mutableStateOf(project?.promptTemplateId ?: prompts.firstOrNull()?.id.orEmpty()) }
     var selectedProviderId by remember { mutableStateOf(project?.providerId ?: providers.firstOrNull()?.id.orEmpty()) }
+    var selectedGlossaryIds by remember { mutableStateOf(project?.glossaryIds?.toSet() ?: emptySet()) }
     var targetLang by remember { mutableStateOf(project?.targetLanguage ?: "Indonesia") }
+
+    var showPromptDropdown by remember { mutableStateOf(false) }
+    var showProviderDropdown by remember { mutableStateOf(false) }
+
+    val currentPromptName = prompts.find { it.id == selectedPromptId }?.name ?: "Pilih Prompt"
+    val currentProviderName = providers.find { it.id == selectedProviderId }?.name ?: "Pilih Provider"
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (project == null) "Tambah Proyek Baru" else "Edit Proyek") },
         text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Nama Proyek") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Deskripsi Catatan") },
+                    label = { Text("Deskripsi / Catatan Proyek") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 OutlinedTextField(
                     value = targetLang,
                     onValueChange = { targetLang = it },
                     label = { Text("Bahasa Target Utama") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Prompt Selector
+                Text("Prompt Template Proyek:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                ExposedDropdownMenuBox(
+                    expanded = showPromptDropdown,
+                    onExpandedChange = { showPromptDropdown = !showPromptDropdown },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = currentPromptName,
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showPromptDropdown) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = showPromptDropdown,
+                        onDismissRequest = { showPromptDropdown = false }
+                    ) {
+                        prompts.forEach { p ->
+                            DropdownMenuItem(
+                                text = { Text(p.name) },
+                                onClick = {
+                                    selectedPromptId = p.id
+                                    showPromptDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Provider Selector
+                Text("Provider AI Proyek:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                ExposedDropdownMenuBox(
+                    expanded = showProviderDropdown,
+                    onExpandedChange = { showProviderDropdown = !showProviderDropdown },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = currentProviderName,
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showProviderDropdown) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = showProviderDropdown,
+                        onDismissRequest = { showProviderDropdown = false }
+                    ) {
+                        providers.forEach { prov ->
+                            DropdownMenuItem(
+                                text = { Text(prov.name) },
+                                onClick = {
+                                    selectedProviderId = prov.id
+                                    showProviderDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Glossary Selection Checklist
+                Text("Tautkan Glosarium Spesifik:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                if (glossaryList.isEmpty()) {
+                    Text("Belum ada glosarium. Semua istilah umum akan digunakan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            glossaryList.forEach { item ->
+                                val isChecked = selectedGlossaryIds.contains(item.id)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 2.dp)
+                                ) {
+                                    Checkbox(
+                                        checked = isChecked,
+                                        onCheckedChange = { checked ->
+                                            selectedGlossaryIds = if (checked) {
+                                                selectedGlossaryIds + item.id
+                                            } else {
+                                                selectedGlossaryIds - item.id
+                                            }
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${item.source} ➔ ${item.target}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -1187,6 +1316,7 @@ private fun ProjectEditDialog(
                             description = description,
                             promptTemplateId = selectedPromptId,
                             providerId = selectedProviderId,
+                            glossaryIds = selectedGlossaryIds.toList(),
                             targetLanguage = targetLang
                         )
                         onSave(proj)
@@ -1311,15 +1441,28 @@ private fun PromptEditDialog(
         title = { Text(if (prompt == null) "Tambah Prompt Baru" else "Edit Prompt") },
         text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nama Prompt") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Deskripsi Singkat") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nama Prompt") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Deskripsi Singkat") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    label = { Text("Instruksi System Prompt (Gunakan {target})") },
+                    label = { Text("Instruksi System Prompt (Gunakan placeholder {target})") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 5
                 )
@@ -1333,13 +1476,14 @@ private fun PromptEditDialog(
                             id = prompt?.id ?: java.util.UUID.randomUUID().toString(),
                             name = name,
                             content = content,
-                            category = "custom",
+                            category = prompt?.category ?: "custom",
                             description = description,
-                            isBuiltIn = false
+                            isBuiltIn = prompt?.isBuiltIn ?: false
                         )
                         onSave(p)
                     }
-                }
+                },
+                enabled = name.isNotBlank() && content.isNotBlank()
             ) { Text("Simpan") }
         },
         dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Batal") } }
@@ -1463,12 +1607,31 @@ private fun GlossaryEditDialog(
         title = { Text(if (entry == null) "Tambah Istilah Glosarium" else "Edit Istilah") },
         text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                OutlinedTextField(value = source, onValueChange = { source = it }, label = { Text("Teks/Istilah Asli") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Terjemahan Baku") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = note, onValueChange = { note = it }, label = { Text("Catatan / Context (Opsional)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = source,
+                    onValueChange = { source = it },
+                    label = { Text("Teks / Istilah Asli") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = target,
+                    onValueChange = { target = it },
+                    label = { Text("Terjemahan Baku") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Catatan Context (Opsional)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
@@ -1477,13 +1640,14 @@ private fun GlossaryEditDialog(
                     if (source.isNotBlank() && target.isNotBlank()) {
                         val item = GlossaryEntry(
                             id = entry?.id ?: java.util.UUID.randomUUID().toString(),
-                            source = source,
-                            target = target,
-                            note = note
+                            source = source.trim(),
+                            target = target.trim(),
+                            note = note.trim()
                         )
                         onSave(item)
                     }
-                }
+                },
+                enabled = source.isNotBlank() && target.isNotBlank()
             ) { Text("Simpan") }
         },
         dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Batal") } }
@@ -1745,122 +1909,80 @@ private fun SettingsScreen(vm: MochiViewModel) {
 
 @Composable
 private fun DocumentationScreen() {
-    val docs = listOf(
-        "Petunjuk Penggunaan" to "1. Atur Provider API & API Key di Pengaturan AI.\n2. Pilih Prompt Mode (Novel, Komik, General, atau OCR Cleanup).\n3. Tambahkan Glosarium istilah spesifik di Pengelola Glosarium.\n4. Masukkan teks di halaman Terjemahkan Teks atau buka file di Terjemahkan File.",
-        "Prompt Engine & Context Injection" to "MochiTL secara otomatis menggabungkan instruksi prompt terpilih dan glosarium aktif ke dalam konteks system prompt sebelum mengirim permintaan ke AI.",
-        "OpenAI & Local Model (Ollama / LM Studio)" to "Untuk Ollama/LM Studio lokal, pastikan server lokal Anda aktif di alamat http://127.0.0.1:11434 atau http://127.0.0.1:1234. Anda dapat menyesuaikan Base URL di Pengaturan AI.",
-        "Split Build Multi-ABI APK" to "MochiTL dibangun dengan split ABI (arm64-v8a, armeabi-v7a, x86, x86_64, serta Universal APK) untuk performa optimal di setiap arsitektur Android.",
-        "Keamanan Key" to "Seluruh API Key disimpan secara aman menggunakan EncryptedSharedPreferences yang dilindungi Android Keystore hardware-backed."
+    val sections = listOf(
+        Triple(
+            "Jenis File & Format Import",
+            Icons.Default.Description,
+            "• File Teks: Hanya mendukun format Teks Polos (.txt) dengan enkodasi UTF-8.\n" +
+                    "• Pengelola Glosarium: Input pasangan kata manual (Nama Asli ➔ Terjemahan Baku + Catatan Opsional).\n" +
+                    "• Pengelola Prompt: Template teks manual menggunakan placeholder {target} (otomatis diganti bahasa tujuan)."
+        ),
+        Triple(
+            "Provider AI & Model Server",
+            Icons.Default.Settings,
+            "• Google Gemini: Membutuhkan API Key dari Google AI Studio.\n" +
+                    "• OpenAI & OpenRouter: Membutuhkan API Key resmi masing-masing provider.\n" +
+                    "• Ollama (Lokal): URL default http://127.0.0.1:11434 (Tanpa API Key).\n" +
+                    "• LM Studio (Lokal): URL default http://127.0.0.1:1234 (Tanpa API Key)."
+        ),
+        Triple(
+            "Glosarium & Context Injection",
+            Icons.AutoMirrored.Filled.Comment,
+            "• Glosarium aktif atau glosarium yang ditautkan ke proyek akan otomatis di-inject ke dalam System Prompt AI.\n" +
+                    "• AI dipaksa secara ketat mengikuti pasangan istilah yang telah didaftarkan agar nama karakter, jurus, dan tempat tetap konsisten."
+        ),
+        Triple(
+            "Manajemen Proyek Terjemahan",
+            Icons.Default.Book,
+            "• Setiap proyek dapat menyimpan konfigurasi khusus: Prompt pilihan, Provider AI, Bahasa Target, dan Daftar Glosarium terkait.\n" +
+                    "• Saat proyek diaktifkan, pengaturan proyek otomatis menjadi acuan utama penerjemahan."
+        )
     )
-
-    val pagerState = rememberPagerState(pageCount = { docs.size })
-    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Dokumentasi & Panduan", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(
-                text = "${pagerState.currentPage + 1} / ${docs.size}",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Text(
+            text = "Dokumentasi & Panduan",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) { page ->
-            val (title, content) = docs[page]
+        sections.forEach { (title, icon, content) ->
             Card(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 4.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
                     Text(
                         text = content,
-                        style = MaterialTheme.typography.bodyLarge,
-                        lineHeight = 24.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 22.sp
                     )
                 }
-            }
-        }
-
-        // Page Indicator dots and Next/Prev controls
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = {
-                    if (pagerState.currentPage > 0) {
-                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                    }
-                },
-                enabled = pagerState.currentPage > 0
-            ) {
-                Icon(Icons.Default.ChevronLeft, contentDescription = "Sebelumnya")
-            }
-
-            // Indicator Dots
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(docs.size) { index ->
-                    val isSelected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .size(if (isSelected) 10.dp else 8.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            )
-                    )
-                }
-            }
-
-            IconButton(
-                onClick = {
-                    if (pagerState.currentPage < docs.size - 1) {
-                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                    }
-                },
-                enabled = pagerState.currentPage < docs.size - 1
-            ) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "Berikutnya")
             }
         }
     }

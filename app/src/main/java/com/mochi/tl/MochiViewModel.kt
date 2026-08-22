@@ -108,16 +108,27 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun cancel() { job?.cancel(); _state.value = _state.value.copy(isTranslating = false, isPaused = false, progress = 0f) }
 
     fun savePrompt(prompt: PromptTemplate) {
-        prompts.value = (prompts.value.filterNot { it.id == prompt.id } + prompt)
-        storage.savePrompts(prompts.value)
+        val updated = prompts.value.filterNot { it.id == prompt.id } + prompt
+        prompts.value = updated
+        storage.savePrompts(updated)
+        if (activePrompt.value.id == prompt.id) {
+            activePrompt.value = prompt
+        }
     }
     fun deletePrompt(id: String) {
-        prompts.value = prompts.value.filterNot { it.id == id || it.isBuiltIn }
-        storage.savePrompts(prompts.value)
+        val updated = prompts.value.filterNot { it.id == id && !it.isBuiltIn }
+        prompts.value = updated
+        storage.savePrompts(updated)
+        if (activePrompt.value.id == id) {
+            activePrompt.value = updated.firstOrNull() ?: BuiltIns.defaultPrompt
+        }
     }
     fun resetPromptsToDefault() {
         prompts.value = BuiltIns.prompts
         storage.savePrompts(prompts.value)
+        if (prompts.value.none { it.id == activePrompt.value.id }) {
+            activePrompt.value = BuiltIns.defaultPrompt
+        }
     }
 
     fun saveGlossaryItem(entry: GlossaryEntry) {

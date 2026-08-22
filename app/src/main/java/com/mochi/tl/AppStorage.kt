@@ -8,13 +8,15 @@ import kotlinx.serialization.json.Json
 
 class AppStorage(context: Context) {
     private val plain = context.getSharedPreferences("mochitl_preferences", Context.MODE_PRIVATE)
-    private val secure = EncryptedSharedPreferences.create(
-        context,
-        "mochitl_secure",
-        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val secure = runCatching {
+        EncryptedSharedPreferences.create(
+            context,
+            "mochitl_secure",
+            MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrElse { context.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE) }
     private val json = Json { ignoreUnknownKeys = true }
 
     fun saveApiKey(providerId: String, value: String) = secure.edit().putString("api_key_$providerId", value).apply()
