@@ -30,6 +30,8 @@ class AppStorage(context: Context) {
     fun prompts(): List<PromptTemplate> = plain.getString("prompts", null)?.let { runCatching { json.decodeFromString<List<PromptTemplate>>(it) }.getOrDefault(BuiltIns.prompts) } ?: BuiltIns.prompts
     fun saveHistory(items: List<TranslationRecord>) = plain.edit().putString("history", json.encodeToString(items.take(100))).apply()
     fun history(): List<TranslationRecord> = plain.getString("history", null)?.let { runCatching { json.decodeFromString<List<TranslationRecord>>(it) }.getOrDefault(emptyList()) } ?: emptyList()
+    fun saveGlossary(items: List<GlossaryEntry>) = plain.edit().putString("glossary", json.encodeToString(items)).apply()
+    fun glossary(): List<GlossaryEntry> = plain.getString("glossary", null)?.let { runCatching { json.decodeFromString<List<GlossaryEntry>>(it) }.getOrDefault(emptyList()) } ?: emptyList()
     var autoSaveHistory: Boolean
         get() = plain.getBoolean("auto_save_history", false)
         set(value) { plain.edit().putBoolean("auto_save_history", value).apply() }

@@ -57,13 +57,13 @@ jobs:
       - name: Upload APK sebagai artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mochitl-kotlin-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: mochitl-kotlin-release-apks
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
       - name: Buat GitHub Release (hanya saat push tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/app-release.apk
+          files: app/build/outputs/apk/release/*.apk
           generate_release_notes: true
