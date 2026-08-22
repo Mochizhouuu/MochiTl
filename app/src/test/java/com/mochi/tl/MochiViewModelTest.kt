@@ -88,4 +88,26 @@ class MochiViewModelTest {
         assertEquals(1, importResult.getOrNull())
         assertTrue(viewModel.glossary.value.any { it.id == "glossary_1" })
     }
+
+    @Test
+    fun testOpenAiCompatibleProviderExists() {
+        val providers = viewModel.providers.value
+        val openAiCompat = providers.find { it.id == "openaicompatible" }
+        assertNotNull(openAiCompat)
+        assertEquals("OpenAI Compatible", openAiCompat?.name)
+        assertNotEquals("openai", openAiCompat?.id)
+    }
+
+    @Test
+    fun testModelSelectionAndPersistence() {
+        val openAiCompat = viewModel.providers.value.first { it.id == "openaicompatible" }
+        viewModel.selectProvider(openAiCompat)
+
+        viewModel.setModelForActiveProvider("gpt-4o-custom")
+        assertEquals("gpt-4o-custom", viewModel.customModel)
+        assertEquals("gpt-4o-custom", viewModel.storageModelFor("openaicompatible"))
+
+        viewModel.setModelForActiveProvider("")
+        assertNull(viewModel.customModel)
+    }
 }

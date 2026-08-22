@@ -24,6 +24,15 @@ import kotlinx.serialization.json.Json
 @Serializable private data class GeminiCandidate(val content: GeminiContent)
 @Serializable private data class GeminiResponse(val candidates: List<GeminiCandidate> = emptyList())
 
+@Serializable private data class OpenAiModelItem(val id: String)
+@Serializable private data class OpenAiModelsResponse(val data: List<OpenAiModelItem> = emptyList())
+
+@Serializable private data class OllamaModelItem(val name: String)
+@Serializable private data class OllamaModelsResponse(val models: List<OllamaModelItem> = emptyList())
+
+@Serializable private data class GeminiModelItem(val name: String)
+@Serializable private data class GeminiModelsResponse(val models: List<GeminiModelItem> = emptyList())
+
 class TranslationRepository {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val client = HttpClient(Android) {
@@ -58,7 +67,35 @@ class TranslationRepository {
         if (config.id == "gemini") require(!apiKey.isNullOrBlank()) { "API key wajib untuk Gemini." }
         else {
             val root = config.baseUrl.trimEnd('/').removeSuffix("/v1")
-            client.get("$root/v1/models") { apiKey?.let { header("Authorization", "Bearer $it") } }
+            client.get("$root/v1/models") { apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") } }
         }
+    }
+
+    suspend fun fetchModels(config: ProviderConfig, apiKey: String?): Result<List<String>> = runCatching {
+        val root = config.baseUrl.trimEnd('/').removeSuffix("/v1")
+        val modelList = when (config.id) {
+            "gemini" -> {
+                require(!apiKey.isNullOrBlank()) { "API key Gemini belum diatur." }
+                val resp = client.get("${config.baseUrl.trimEnd('/')}/v1beta/models?key=$apiKey").body<GeminiModelsResponse>()
+                resp.models.map { it.name.removePrefix("models/") }.filter { it.contains("gemini", ignoreCase = true) }
+            }
+            "ollama" -> {
+                try {
+                    val resp = client.get("$root/v1/models").body<OpenAiModelsResponse>()
+                    resp.data.map { it.id }
+                } catch (e: Exception) {
+                    val resp = client.get("${config.baseUrl.trimEnd('/')}/api/tags").body<OllamaModelsResponse>()
+                    resp.models.map { it.name }
+                }
+            }
+            else -> {
+                val resp = client.get("$root/v1/models") {
+                    apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") }
+                }.body<OpenAiModelsResponse>()
+                resp.data.map { it.id }
+            }
+        }
+        val sortedList = modelList.distinct().sorted()
+        if (sortedList.isEmpty()) listOf(config.model) else sortedList
     }
 }

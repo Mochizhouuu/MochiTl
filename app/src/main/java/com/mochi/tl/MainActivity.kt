@@ -442,7 +442,14 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
             ) {
                 Icon(Icons.Default.Language, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Mulai Terjemahkan Teks", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(
+                    text = "Mulai Terjemahkan Teks",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
@@ -458,78 +465,85 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
             ) {
                 Icon(Icons.Default.Description, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Terjemahkan Dokumen / File TXT", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(
+                    text = "Terjemahkan Dokumen / File TXT",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             OutlinedButton(
                 onClick = { navigate(Screen.PROJECTS) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(Icons.Default.Book, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Proyek", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Proyek", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             OutlinedButton(
                 onClick = { navigate(Screen.SETTINGS) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Settings AI", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Settings AI", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             OutlinedButton(
                 onClick = { navigate(Screen.PROMPTS) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Prompts", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Prompts", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             OutlinedButton(
                 onClick = { navigate(Screen.GLOSSARY) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
+                contentPadding = PaddingValues(vertical = 10.dp, horizontal = 6.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Glosarium", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Glosarium", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -552,6 +566,12 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
 
     var sourceLanguage by remember { mutableStateOf("Jepang") }
     var targetLanguage by remember { mutableStateOf("Indonesia") }
+
+    val sourceLanguagePresets = listOf("Jepang", "Inggris", "Mandarin", "Korea", "Otomatis", "Indonesia", "Jerman", "Prancis", "Spanyol")
+    val targetLanguagePresets = listOf("Indonesia", "Inggris", "Jepang", "Mandarin", "Korea", "Jerman", "Prancis", "Spanyol")
+
+    var showSourceLangMenu by remember { mutableStateOf(false) }
+    var showTargetLangMenu by remember { mutableStateOf(false) }
 
     var showProviderMenu by remember { mutableStateOf(false) }
     var showPromptMenu by remember { mutableStateOf(false) }
@@ -598,13 +618,22 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = activeProvider.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Column {
+                                Text(
+                                    text = activeProvider.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = vm.customModel ?: activeProvider.model,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = showProviderMenu)
                     }
@@ -684,20 +713,44 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
             }
         }
 
-        // Language Selector with Swap Button
+        // Language Selector Dropdowns with Swap Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedTextField(
-                value = sourceLanguage,
-                onValueChange = { sourceLanguage = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("Sumber") },
-                singleLine = true,
-                shape = RoundedCornerShape(10.dp)
-            )
+            // Source Language Dropdown Box
+            ExposedDropdownMenuBox(
+                expanded = showSourceLangMenu,
+                onExpandedChange = { showSourceLangMenu = !showSourceLangMenu },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = sourceLanguage,
+                    onValueChange = { sourceLanguage = it },
+                    label = { Text("Sumber") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showSourceLangMenu) },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = showSourceLangMenu,
+                    onDismissRequest = { showSourceLangMenu = false }
+                ) {
+                    sourceLanguagePresets.forEach { lang ->
+                        DropdownMenuItem(
+                            text = { Text(lang) },
+                            onClick = {
+                                sourceLanguage = lang
+                                showSourceLangMenu = false
+                            }
+                        )
+                    }
+                }
+            }
 
             FilledIconButton(
                 onClick = {
@@ -717,14 +770,38 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 )
             }
 
-            OutlinedTextField(
-                value = targetLanguage,
-                onValueChange = { targetLanguage = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("Target") },
-                singleLine = true,
-                shape = RoundedCornerShape(10.dp)
-            )
+            // Target Language Dropdown Box
+            ExposedDropdownMenuBox(
+                expanded = showTargetLangMenu,
+                onExpandedChange = { showTargetLangMenu = !showTargetLangMenu },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = targetLanguage,
+                    onValueChange = { targetLanguage = it },
+                    label = { Text("Target") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTargetLangMenu) },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = showTargetLangMenu,
+                    onDismissRequest = { showTargetLangMenu = false }
+                ) {
+                    targetLanguagePresets.forEach { lang ->
+                        DropdownMenuItem(
+                            text = { Text(lang) },
+                            onClick = {
+                                targetLanguage = lang
+                                showTargetLangMenu = false
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         // Source Text Input Field
@@ -942,12 +1019,22 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FileTranslationScreen(vm: MochiViewModel) {
     var fileName by remember { mutableStateOf<String?>(null) }
     var fileText by remember { mutableStateOf("") }
     val state by vm.state.collectAsState()
     val context = LocalContext.current
+
+    var sourceLanguage by remember { mutableStateOf("Jepang") }
+    var targetLanguage by remember { mutableStateOf("Indonesia") }
+
+    val sourceLanguagePresets = listOf("Jepang", "Inggris", "Mandarin", "Korea", "Otomatis", "Indonesia", "Jerman", "Prancis", "Spanyol")
+    val targetLanguagePresets = listOf("Indonesia", "Inggris", "Jepang", "Mandarin", "Korea", "Jerman", "Prancis", "Spanyol")
+
+    var showSourceLangMenu by remember { mutableStateOf(false) }
+    var showTargetLangMenu by remember { mutableStateOf(false) }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
@@ -981,6 +1068,95 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
             }
         }
 
+        // Language Selector Dropdowns with Swap Button for Document Translation
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ExposedDropdownMenuBox(
+                expanded = showSourceLangMenu,
+                onExpandedChange = { showSourceLangMenu = !showSourceLangMenu },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = sourceLanguage,
+                    onValueChange = { sourceLanguage = it },
+                    label = { Text("Sumber") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showSourceLangMenu) },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = showSourceLangMenu,
+                    onDismissRequest = { showSourceLangMenu = false }
+                ) {
+                    sourceLanguagePresets.forEach { lang ->
+                        DropdownMenuItem(
+                            text = { Text(lang) },
+                            onClick = {
+                                sourceLanguage = lang
+                                showSourceLangMenu = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            FilledIconButton(
+                onClick = {
+                    val temp = sourceLanguage
+                    sourceLanguage = targetLanguage
+                    targetLanguage = temp
+                },
+                modifier = Modifier.size(44.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Icon(
+                    Icons.Default.SwapHoriz,
+                    contentDescription = "Tukar Bahasa",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            ExposedDropdownMenuBox(
+                expanded = showTargetLangMenu,
+                onExpandedChange = { showTargetLangMenu = !showTargetLangMenu },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = targetLanguage,
+                    onValueChange = { targetLanguage = it },
+                    label = { Text("Target") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTargetLangMenu) },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = showTargetLangMenu,
+                    onDismissRequest = { showTargetLangMenu = false }
+                ) {
+                    targetLanguagePresets.forEach { lang ->
+                        DropdownMenuItem(
+                            text = { Text(lang) },
+                            onClick = {
+                                targetLanguage = lang
+                                showTargetLangMenu = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         Button(
             onClick = { filePicker.launch(arrayOf("text/plain")) },
             modifier = Modifier
@@ -1009,7 +1185,7 @@ private fun FileTranslationScreen(vm: MochiViewModel) {
             }
 
             Button(
-                onClick = { vm.translate(source = fileText) },
+                onClick = { vm.translate(source = fileText, target = targetLanguage) },
                 enabled = !state.isTranslating,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1163,8 +1339,16 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(proj.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = proj.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             if (isActive) {
+                                Spacer(modifier = Modifier.width(8.dp))
                                 SuggestionChip(onClick = {}, label = { Text("AKTIF", fontWeight = FontWeight.Bold) })
                             }
                         }
@@ -1480,7 +1664,15 @@ private fun PromptScreen(vm: MochiViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(p.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = p.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             SuggestionChip(
                                 onClick = {},
                                 label = { Text(if (p.isBuiltIn) "Built-in" else "Kustom", fontWeight = FontWeight.Medium) }
@@ -1725,13 +1917,37 @@ private fun GlossaryScreen(vm: MochiViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(entry.source, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
-                                Text("  ➔  ", color = MaterialTheme.colorScheme.primary)
-                                Text(entry.target, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyLarge)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = entry.source,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                Text(" ➔ ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = entry.target,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
                             }
                             if (entry.note.isNotBlank()) {
-                                Text("Catatan: ${entry.note}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "Catatan: ${entry.note}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
 
@@ -1937,24 +2153,32 @@ private fun HistoryScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(vm: MochiViewModel) {
     val providers by vm.providers.collectAsState()
     val activeProvider by vm.activeProvider.collectAsState()
+    val availableModels by vm.availableModels.collectAsState()
     val scope = rememberCoroutineScope()
 
     var apiKeyText by remember { mutableStateOf(vm.apiKey.orEmpty()) }
     var baseUrlText by remember { mutableStateOf(vm.customBaseUrl.orEmpty()) }
+    var modelText by remember { mutableStateOf(vm.customModel ?: activeProvider.model) }
     var isKeyVisible by remember { mutableStateOf(false) }
     var autoSaveHistory by remember { mutableStateOf(vm.autoSave()) }
 
     var testStatus by remember { mutableStateOf<String?>(null) }
     var isTesting by remember { mutableStateOf(false) }
+    var isFetchingModels by remember { mutableStateOf(false) }
+    var fetchModelStatus by remember { mutableStateOf<String?>(null) }
+    var showModelDropdown by remember { mutableStateOf(false) }
 
     LaunchedEffect(activeProvider.id) {
         apiKeyText = vm.apiKey.orEmpty()
         baseUrlText = vm.customBaseUrl.orEmpty()
+        modelText = vm.customModel ?: activeProvider.model
         testStatus = null
+        fetchModelStatus = null
     }
 
     Column(
@@ -1968,11 +2192,13 @@ private fun SettingsScreen(vm: MochiViewModel) {
 
         providers.forEach { prov ->
             val isSelected = activeProvider.id == prov.id
+            val currentModel = if (isSelected) modelText else (vm.storageModelFor(prov.id) ?: prov.model)
             OutlinedCard(
                 onClick = {
                     vm.selectProvider(prov)
                     apiKeyText = vm.apiKey.orEmpty()
                     baseUrlText = vm.customBaseUrl.orEmpty()
+                    modelText = vm.customModel ?: prov.model
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = if (isSelected) CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.outlinedCardColors()
@@ -1985,7 +2211,7 @@ private fun SettingsScreen(vm: MochiViewModel) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text(prov.name, fontWeight = FontWeight.Bold)
-                        Text("Model: ${prov.model} • ${prov.baseUrl}", style = MaterialTheme.typography.bodySmall)
+                        Text("Model: $currentModel • ${prov.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -2027,6 +2253,93 @@ private fun SettingsScreen(vm: MochiViewModel) {
             placeholder = { Text("Contoh: ${activeProvider.baseUrl}") },
             singleLine = true
         )
+
+        // Model Selection & Fetch Button
+        Text("Pilihan Model AI", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ExposedDropdownMenuBox(
+                expanded = showModelDropdown && availableModels.isNotEmpty(),
+                onExpandedChange = { if (availableModels.isNotEmpty()) showModelDropdown = !showModelDropdown },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = modelText,
+                    onValueChange = {
+                        modelText = it
+                        vm.setModelForActiveProvider(it)
+                    },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
+                        .fillMaxWidth(),
+                    label = { Text("Nama Model AI") },
+                    singleLine = true,
+                    trailingIcon = {
+                        if (availableModels.isNotEmpty()) {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown)
+                        }
+                    }
+                )
+                if (availableModels.isNotEmpty()) {
+                    ExposedDropdownMenu(
+                        expanded = showModelDropdown,
+                        onDismissRequest = { showModelDropdown = false }
+                    ) {
+                        availableModels.forEach { modelName ->
+                            DropdownMenuItem(
+                                text = { Text(modelName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                onClick = {
+                                    modelText = modelName
+                                    vm.setModelForActiveProvider(modelName)
+                                    showModelDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Button(
+                onClick = {
+                    isFetchingModels = true
+                    fetchModelStatus = null
+                    scope.launch {
+                        val res = vm.fetchModelsForActiveProvider()
+                        isFetchingModels = false
+                        if (res.isSuccess) {
+                            val list = res.getOrDefault(emptyList())
+                            fetchModelStatus = "Berhasil memuat ${list.size} model!"
+                            if (list.isNotEmpty()) showModelDropdown = true
+                        } else {
+                            fetchModelStatus = "Gagal memuat model: ${res.exceptionOrNull()?.message}"
+                        }
+                    }
+                },
+                enabled = !isFetchingModels,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                if (isFetchingModels) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Fetch", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        if (fetchModelStatus != null) {
+            Text(
+                text = fetchModelStatus!!,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (fetchModelStatus!!.startsWith("Berhasil")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
 
         Button(
             onClick = {

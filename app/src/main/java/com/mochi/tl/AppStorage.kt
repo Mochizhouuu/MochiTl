@@ -26,6 +26,10 @@ class AppStorage(context: Context) {
     fun baseUrl(providerId: String): String? = secure.getString("base_url_$providerId", null)
     fun deleteBaseUrl(providerId: String) = secure.edit().remove("base_url_$providerId").apply()
 
+    fun saveModel(providerId: String, value: String) = plain.edit().putString("model_$providerId", value).apply()
+    fun model(providerId: String): String? = plain.getString("model_$providerId", null)
+    fun deleteModel(providerId: String) = plain.edit().remove("model_$providerId").apply()
+
     fun saveProjects(items: List<TranslationProject>) = plain.edit().putString("projects", json.encodeToString(items)).apply()
     fun projects(): List<TranslationProject> = plain.getString("projects", null)?.let { runCatching { json.decodeFromString<List<TranslationProject>>(it) }.getOrDefault(emptyList()) } ?: emptyList()
     fun savePrompts(items: List<PromptTemplate>) = plain.edit().putString("prompts", json.encodeToString(items)).apply()
