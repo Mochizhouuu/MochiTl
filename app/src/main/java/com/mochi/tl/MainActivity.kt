@@ -5,8 +5,12 @@ import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.app.Activity
 import android.net.Uri
 import android.os.Bundle
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -125,8 +129,24 @@ fun MochiAppTheme(
         onSurfaceVariant = Color(0xFFCAC4D0)
     )
 
+    val colorScheme = if (darkTheme) darkColors else lightColors
+    val view = LocalView.current
+
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window
+            window?.let { win ->
+                win.statusBarColor = colorScheme.surface.toArgb()
+                win.navigationBarColor = colorScheme.surface.toArgb()
+                val controller = WindowCompat.getInsetsController(win, view)
+                controller.isAppearanceLightStatusBars = !darkTheme
+                controller.isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+
     MaterialTheme(
-        colorScheme = if (darkTheme) darkColors else lightColors,
+        colorScheme = colorScheme,
         content = content
     )
 }
@@ -290,6 +310,10 @@ fun MochiApp(
         Scaffold(
             topBar = {
                 TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                    ),
                     title = {
                         Column {
                             Text(
@@ -761,38 +785,42 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
             }
         }
 
-        // Action Controls (Translate, Pause, Cancel) with clear sizing and padding
+        // Action Controls (Translate, Pause, Cancel) with responsive layout
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Button(
-                onClick = { vm.translate(target = targetLanguage) },
-                enabled = state.input.isNotBlank() && !state.isTranslating,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Terjemahkan", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-
-            if (state.isTranslating) {
+            if (!state.isTranslating) {
+                Button(
+                    onClick = { vm.translate(target = targetLanguage) },
+                    enabled = state.input.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Terjemahkan Teks", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            } else {
                 FilledTonalButton(
                     onClick = { if (state.isPaused) vm.resume() else vm.pause() },
-                    modifier = Modifier.height(48.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(if (state.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (state.isPaused) "Lanjut" else "Jeda")
+                    Text(if (state.isPaused) "Lanjutkan" else "Jeda", fontWeight = FontWeight.SemiBold)
                 }
 
                 OutlinedButton(
                     onClick = vm::cancel,
-                    modifier = Modifier.height(48.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
@@ -800,7 +828,7 @@ private fun TextTranslationScreen(vm: MochiViewModel) {
                 ) {
                     Icon(Icons.Default.Stop, contentDescription = null)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Batal")
+                    Text("Batal", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -1045,13 +1073,22 @@ private fun ProjectsScreen(vm: MochiViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Daftar Proyek", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = "Daftar Proyek",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = { editingProject = null; showDialog = true },
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(6.dp))
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text("Tambah Proyek", fontWeight = FontWeight.SemiBold)
             }
         }
@@ -1104,16 +1141,21 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                             if (!isActive) {
                                 FilledTonalButton(
                                     onClick = { vm.selectProject(proj) },
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) { Text("Aktifkan Proyek") }
                             } else {
                                 OutlinedButton(
                                     onClick = { vm.selectProject(null) },
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) { Text("Nonaktifkan") }
                             }
 
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 IconButton(onClick = { editingProject = proj; showDialog = true }) {
                                     Icon(Icons.Default.Edit, contentDescription = "Edit Proyek")
                                 }
@@ -1347,19 +1389,32 @@ private fun PromptScreen(vm: MochiViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Pengelola Prompt", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "Pengelola Prompt",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 OutlinedButton(
                     onClick = { vm.resetPromptsToDefault() },
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text("Reset")
                 }
                 Button(
                     onClick = { editingPrompt = null; showEditDialog = true },
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Tambah", fontWeight = FontWeight.SemiBold)
                 }
@@ -1512,12 +1567,21 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Glosarium Istilah", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = "Glosarium Istilah",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = { editingEntry = null; showDialog = true },
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Tambah Istilah", fontWeight = FontWeight.SemiBold)
             }
@@ -1674,13 +1738,22 @@ private fun HistoryScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Riwayat Terjemahan", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = "Riwayat Terjemahan",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             if (history.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(8.dp))
                 OutlinedButton(
                     onClick = { vm.clearHistory() },
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.DeleteSweep, contentDescription = null)
+                    Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Bersihkan")
                 }
@@ -1911,31 +1984,44 @@ private fun SettingsScreen(vm: MochiViewModel) {
 private fun DocumentationScreen() {
     val sections = listOf(
         Triple(
-            "Jenis File & Format Import",
-            Icons.Default.Description,
-            "• File Teks: Hanya mendukun format Teks Polos (.txt) dengan enkodasi UTF-8.\n" +
-                    "• Pengelola Glosarium: Input pasangan kata manual (Nama Asli ➔ Terjemahan Baku + Catatan Opsional).\n" +
-                    "• Pengelola Prompt: Template teks manual menggunakan placeholder {target} (otomatis diganti bahasa tujuan)."
+            "Panduan Penerjemahan Teks & Dokumen",
+            Icons.Default.Language,
+            "• Terjemahkan Teks: Masukkan atau tempelkan teks langsung untuk diterjemahkan secara instan per-chunk tanpa khawatir terpotong.\n" +
+                    "• Terjemahkan File (.txt): Mendukung pengunggahan dokumen teks berkode UTF-8. Aplikasi secara otomatis memecah file menjadi potongan teks (chunking) dan menerjemahkannya secara berurutan.\n" +
+                    "• Kontrol Proses: Anda dapat menjeda, melanjutkan, atau membatalkan penerjemahan kapan saja."
         ),
         Triple(
-            "Provider AI & Model Server",
+            "Pengkonfigurasian Provider AI",
             Icons.Default.Settings,
-            "• Google Gemini: Membutuhkan API Key dari Google AI Studio.\n" +
-                    "• OpenAI & OpenRouter: Membutuhkan API Key resmi masing-masing provider.\n" +
-                    "• Ollama (Lokal): URL default http://127.0.0.1:11434 (Tanpa API Key).\n" +
-                    "• LM Studio (Lokal): URL default http://127.0.0.1:1234 (Tanpa API Key)."
-        ),
-        Triple(
-            "Glosarium & Context Injection",
-            Icons.AutoMirrored.Filled.Comment,
-            "• Glosarium aktif atau glosarium yang ditautkan ke proyek akan otomatis di-inject ke dalam System Prompt AI.\n" +
-                    "• AI dipaksa secara ketat mengikuti pasangan istilah yang telah didaftarkan agar nama karakter, jurus, dan tempat tetap konsisten."
+            "• Provider Cloud (Gemini, OpenAI, OpenRouter): Memerlukan API Key resmi dari masing-masing layanan. Seluruh API Key disandikan secara aman menggunakan EncryptedSharedPreferences (Android Keystore).\n" +
+                    "• Server AI Lokal (Ollama & LM Studio): MochiTL mendukung server lokal tanpa API Key. Gunakan URL default http://127.0.0.1:11434 (Ollama) atau http://127.0.0.1:1234 (LM Studio).\n" +
+                    "• Uji Koneksi: Gunakan fitur 'Uji Koneksi API' di menu Pengaturan untuk memastikan ketersediaan server sebelum menerjemahkan."
         ),
         Triple(
             "Manajemen Proyek Terjemahan",
             Icons.Default.Book,
-            "• Setiap proyek dapat menyimpan konfigurasi khusus: Prompt pilihan, Provider AI, Bahasa Target, dan Daftar Glosarium terkait.\n" +
-                    "• Saat proyek diaktifkan, pengaturan proyek otomatis menjadi acuan utama penerjemahan."
+            "• Konfigurasi Khusus Proyek: Setiap proyek menyimpan preferensi tersendiri seperti Prompt Template, Provider AI pilihan, Bahasa Target, dan daftar Glosarium terikat.\n" +
+                    "• Konsistensi Seri: Sangat cocok untuk mengelola novel, komik (manga/manhwa), atau proyek terjemahan panjang agar istilah dan gaya bahasa tetap seragam.\n" +
+                    "• Pengaktifan Proyek: Saat sebuah proyek diaktifkan, seluruh proses penerjemahan otomatis merujuk pada preferensi proyek tersebut."
+        ),
+        Triple(
+            "Pengelola Prompt (Prompt Manager)",
+            Icons.AutoMirrored.Filled.Send,
+            "• Custom System Prompt: Anda dapat membuat, mengubah, atau mengatur instruksi sistem untuk menyesuaikan gaya terjemahan (formal, santai, gaya novel, dll).\n" +
+                    "• Placeholder {target}: Gunakan placeholder {target} pada template prompt, yang nantinya secara otomatis akan digantikan dengan Bahasa Target yang dipilih (contoh: Indonesia).\n" +
+                    "• Prompt Bawaan: Tersedia preset bawaan seperti 'Standard Light Novel', 'Comic/Manga Style', dan 'Formal Academic'."
+        ),
+        Triple(
+            "Glosarium & Injeksi Konteks (Context Injection)",
+            Icons.AutoMirrored.Filled.Comment,
+            "• Injeksi Otomatis: Seluruh entitas istilah (Nama Asli ➔ Terjemahan Baku + Catatan) di Glosarium aktif atau terikat proyek akan disisipkan secara otomatis ke dalam instruksi AI.\n" +
+                    "• Ketaatan AI: Memaksa model AI mengikuti pasangan nama karakter, nama jurus, lokasi, dan istilah khusus agar tidak berubah-ubah di tengah cerita."
+        ),
+        Triple(
+            "Penyimpanan Riwayat & Ekspor File",
+            Icons.Default.History,
+            "• Riwayat Otomatis: Hasil terjemahan dapat disimpan secara otomatis ke tab Riwayat untuk diakses kembali kapan saja.\n" +
+                    "• Ekspor File: Hasil terjemahan dokumen dapat langsung disimpan ke folder Download/MochiTL di penyimpanan internal perangkat Anda."
         )
     )
 
@@ -1947,7 +2033,7 @@ private fun DocumentationScreen() {
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
-            text = "Dokumentasi & Panduan",
+            text = "Dokumentasi & Panduan Penggunaan",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
