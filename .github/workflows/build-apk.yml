@@ -1,0 +1,69 @@
+name: Build Signed APK (Kotlin native)
+
+# Jalan otomatis saat push ke main, atau dipicu manual dari tab Actions
+# (Run workflow), atau otomatis saat push tag versi (v1.0.7, dst) yang juga
+# membuat GitHub Release berisi APK-nya.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      # Proyek ini belum menyertakan gradle-wrapper.jar (biner) di repo.
+      # setup-gradle menyediakan Gradle langsung di runner, jadi build tetap
+      # jalan lewat perintah `gradle` walau gradlew belum lengkap. Setelah
+      # kamu generate wrapper sendiri via Termux (lihat PANDUAN), workflow
+      # ini otomatis tetap bekerja karena setup-gradle akan memakai wrapper
+      # kalau ada.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Decode keystore dari Secrets
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release-key.jks
+
+      - name: Buat key.properties dari Secrets
+        run: |
+          cat > key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=../release-key.jks
+          EOF
+
+      - name: Build APK release (signed)
+        run: gradle :app:assembleRelease --no-daemon
+
+      - name: Hapus keystore dari runner
+        if: always()
+        run: rm -f release-key.jks key.properties
+
+      - name: Upload APK sebagai artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochitl-kotlin-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+
+      - name: Buat GitHub Release (hanya saat push tag v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/app-release.apk
+          generate_release_notes: true

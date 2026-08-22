@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Only needed for the legacy (pre-API 29) direct-file Downloads write
+         path in MainActivity.exportText(); MediaStore on API 29+ requires no
+         storage permission. maxSdkVersion keeps this off on modern Android
+         where it would otherwise show as an unnecessary broad permission. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <application
+        android:allowBackup="false"
+        android:icon="@drawable/mochitl_mascot"
+        android:label="MochiTL"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MochiTL">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

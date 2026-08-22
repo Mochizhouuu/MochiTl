@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 9+ blocks cleartext (plain HTTP) traffic by default. The built-in
+    Ollama and LM Studio providers connect to http://127.0.0.1:11434 and
+    http://127.0.0.1:1234 (local model servers, not real internet hosts), so
+    without this config every request to them fails at the network layer
+    before it even reaches TranslationRepository. Cleartext is scoped only to
+    loopback addresses; all other traffic (Gemini, OpenAI, OpenRouter, and any
+    custom OpenAI-compatible base URL) still requires HTTPS as normal.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
