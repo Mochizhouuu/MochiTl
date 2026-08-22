@@ -34,6 +34,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -389,6 +391,7 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Card(
@@ -396,7 +399,9 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
@@ -411,12 +416,15 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                     text = "MochiTL Workspace",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textAlign = TextAlign.Center
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Aplikasi Penerjemah AI untuk Novel, Manga, Manhwa & File",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -425,21 +433,33 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
         Button(
             onClick = { navigate(Screen.TEXT) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp)
         ) {
-            Icon(Icons.Default.Language, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Mulai Terjemahkan Teks", fontSize = 16.sp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(Icons.Default.Language, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Mulai Terjemahkan Teks", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            }
         }
 
         OutlinedButton(
             onClick = { navigate(Screen.FILE) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 16.dp)
         ) {
-            Icon(Icons.Default.Description, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Terjemahkan Dokumen / File TXT", fontSize = 16.sp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(Icons.Default.Description, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Terjemahkan Dokumen / File TXT", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+            }
         }
 
         Row(
@@ -449,20 +469,32 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
             OutlinedButton(
                 onClick = { navigate(Screen.PROJECTS) },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
             ) {
-                Icon(Icons.Default.Book, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Proyek")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.Book, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Proyek", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                }
             }
             OutlinedButton(
                 onClick = { navigate(Screen.SETTINGS) },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
             ) {
-                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Settings AI")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Settings AI", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                }
             }
         }
 
@@ -473,20 +505,32 @@ private fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
             OutlinedButton(
                 onClick = { navigate(Screen.PROMPTS) },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Prompts")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Prompts", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                }
             }
             OutlinedButton(
                 onClick = { navigate(Screen.GLOSSARY) },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp, horizontal = 8.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Glosarium")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Glosarium", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+                }
             }
         }
     }
@@ -1551,6 +1595,40 @@ private fun GlossaryScreen(vm: MochiViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<GlossaryEntry?>(null) }
+    val context = LocalContext.current
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { destinationUri ->
+            runCatching {
+                val json = vm.exportGlossaryJson()
+                context.contentResolver.openOutputStream(destinationUri)?.use { out ->
+                    out.write(json.toByteArray())
+                }
+                Toast.makeText(context, "Glosarium berhasil diekspor", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Gagal mengekspor: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { sourceUri ->
+            runCatching {
+                val content = context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                    input.bufferedReader().readText()
+                }.orEmpty()
+                val result = vm.importGlossaryJson(content)
+                if (result.isSuccess) {
+                    val count = result.getOrDefault(0)
+                    Toast.makeText(context, "Berhasil mengimpor $count istilah glosarium", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, "Gagal mengimpor: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }.onFailure {
+                Toast.makeText(context, "Gagal membaca file: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     val filtered = glossaryList.filter {
         it.source.contains(searchQuery, ignoreCase = true) || it.target.contains(searchQuery, ignoreCase = true)
@@ -1584,6 +1662,33 @@ private fun GlossaryScreen(vm: MochiViewModel) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Tambah Istilah", fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { exportLauncher.launch("glosarium_mochitl.json") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Ekspor JSON", fontSize = 13.sp)
+            }
+
+            OutlinedButton(
+                onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Impor JSON", fontSize = 13.sp)
             }
         }
 
@@ -1984,91 +2089,203 @@ private fun SettingsScreen(vm: MochiViewModel) {
 private fun DocumentationScreen() {
     val sections = listOf(
         Triple(
-            "Panduan Penerjemahan Teks & Dokumen",
+            "1. Penerjemahan Teks & Dokumen TXT",
             Icons.Default.Language,
-            "• Terjemahkan Teks: Masukkan atau tempelkan teks langsung untuk diterjemahkan secara instan per-chunk tanpa khawatir terpotong.\n" +
-                    "• Terjemahkan File (.txt): Mendukung pengunggahan dokumen teks berkode UTF-8. Aplikasi secara otomatis memecah file menjadi potongan teks (chunking) dan menerjemahkannya secara berurutan.\n" +
-                    "• Kontrol Proses: Anda dapat menjeda, melanjutkan, atau membatalkan penerjemahan kapan saja."
+            "• Editor Teks Langsung:\n" +
+                    "  Salin dan tempelkan kalimat, paragraf, atau bab cerita langsung di menu 'Terjemahkan Teks'. Aplikasi menghitung karakter dan estimasi kata secara real-time.\n\n" +
+                    "• Dokumen Berukuran Besar (.txt):\n" +
+                    "  Gunakan menu 'Terjemahkan File' untuk memuat file teks (.txt) berkode UTF-8. MochiTL akan secara otomatis memecah file menjadi potongan teks (chunking ~4000 karakter) dan menerjemahkannya secara berurutan tanpa terpotong.\n\n" +
+                    "• Kontrol Proses Real-time:\n" +
+                    "  Saat penerjemahan berjalan, Anda dapat menekan tombol Jeda (Pause) untuk menghentikan sementara, Lanjutkan (Resume) untuk meneruskan, atau Batal (Cancel) kapan saja."
         ),
         Triple(
-            "Pengkonfigurasian Provider AI",
+            "2. Pengkonfigurasian Provider AI",
             Icons.Default.Settings,
-            "• Provider Cloud (Gemini, OpenAI, OpenRouter): Memerlukan API Key resmi dari masing-masing layanan. Seluruh API Key disandikan secara aman menggunakan EncryptedSharedPreferences (Android Keystore).\n" +
-                    "• Server AI Lokal (Ollama & LM Studio): MochiTL mendukung server lokal tanpa API Key. Gunakan URL default http://127.0.0.1:11434 (Ollama) atau http://127.0.0.1:1234 (LM Studio).\n" +
-                    "• Uji Koneksi: Gunakan fitur 'Uji Koneksi API' di menu Pengaturan untuk memastikan ketersediaan server sebelum menerjemahkan."
+            "• Layanan Provider Cloud:\n" +
+                    "  Mendukung Google Gemini API, OpenAI (GPT-4o/GPT-3.5), dan OpenRouter. Masukkan API Key Anda pada menu Pengaturan AI. Kunci disandikan secara aman menggunakan EncryptedSharedPreferences (Android Keystore).\n\n" +
+                    "• Server AI Lokal (Ollama & LM Studio):\n" +
+                    "  Dapat dijalankan secara offline atau lokal tanpa API Key! Atur Base URL ke http://10.0.2.2:11434 (Emulator) atau IP PC lokal Anda (misal: http://192.168.1.50:11434) untuk Ollama / LM Studio.\n\n" +
+                    "• Fitur Uji Koneksi:\n" +
+                    "  Sebelum melakukan terjemahan panjang, tekan tombol 'Uji Koneksi API' untuk meyakinkan bahwa endpoint server dan API Key siap digunakan."
         ),
         Triple(
-            "Manajemen Proyek Terjemahan",
+            "3. Manajemen Proyek Terjemahan",
             Icons.Default.Book,
-            "• Konfigurasi Khusus Proyek: Setiap proyek menyimpan preferensi tersendiri seperti Prompt Template, Provider AI pilihan, Bahasa Target, dan daftar Glosarium terikat.\n" +
-                    "• Konsistensi Seri: Sangat cocok untuk mengelola novel, komik (manga/manhwa), atau proyek terjemahan panjang agar istilah dan gaya bahasa tetap seragam.\n" +
-                    "• Pengaktifan Proyek: Saat sebuah proyek diaktifkan, seluruh proses penerjemahan otomatis merujuk pada preferensi proyek tersebut."
+            "• Isolasi Preferensi Seri:\n" +
+                    "  Buat proyek khusus untuk setiap judul Light Novel, Manga, atau Seri Dokumen. Setiap proyek menyimpan Prompt Template pilihan, Provider AI, Bahasa Target, dan Glosarium terikat.\n\n" +
+                    "• Pengaktifan Proyek (Active Project):\n" +
+                    "  Saat sebuah proyek diaktifkan dari menu Proyek, indikator Proyek Aktif akan muncul di bilah navigasi atas. Seluruh sesi penerjemahan otomatis menggunakan aturan proyek tersebut.\n\n" +
+                    "• Menjaga Konsistensi Istilah:\n" +
+                    "  Mencegah AI lupa nama tokoh atau perubahan istilah secara tiba-tiba di pertengahan bab."
         ),
         Triple(
-            "Pengelola Prompt (Prompt Manager)",
+            "4. Pengelola Prompt (Prompt Manager)",
             Icons.AutoMirrored.Filled.Send,
-            "• Custom System Prompt: Anda dapat membuat, mengubah, atau mengatur instruksi sistem untuk menyesuaikan gaya terjemahan (formal, santai, gaya novel, dll).\n" +
-                    "• Placeholder {target}: Gunakan placeholder {target} pada template prompt, yang nantinya secara otomatis akan digantikan dengan Bahasa Target yang dipilih (contoh: Indonesia).\n" +
-                    "• Prompt Bawaan: Tersedia preset bawaan seperti 'Standard Light Novel', 'Comic/Manga Style', dan 'Formal Academic'."
+            "• Custom System Prompt:\n" +
+                    "  Sesuaikan instruksi AI untuk menghasilkan gaya bahasa tertentu (misal: Gaya Novel Populer, Komik/Manga santai, atau Terjemahan Formal/Akademis).\n\n" +
+                    "• DUKUNGAN PLACEHOLDER {target}:\n" +
+                    "  Pastikan menyisipkan kata kunci {target} di dalam System Prompt Anda. MochiTL secara otomatis mengganti {target} dengan bahasa sasaran (contoh: 'Indonesia').\n\n" +
+                    "• Reset Ke Default:\n" +
+                    "  Tersedia tombol Reset untuk mengembalikan template prompt bawaan kapan saja."
         ),
         Triple(
-            "Glosarium & Injeksi Konteks (Context Injection)",
+            "5. Glosarium & Impor / Ekspor",
             Icons.AutoMirrored.Filled.Comment,
-            "• Injeksi Otomatis: Seluruh entitas istilah (Nama Asli ➔ Terjemahan Baku + Catatan) di Glosarium aktif atau terikat proyek akan disisipkan secara otomatis ke dalam instruksi AI.\n" +
-                    "• Ketaatan AI: Memaksa model AI mengikuti pasangan nama karakter, nama jurus, lokasi, dan istilah khusus agar tidak berubah-ubah di tengah cerita."
+            "• Automatic Context Injection:\n" +
+                    "  Daftar pasangan istilah di Glosarium (Misal: 主人公 ➔ Pahlawan Utama) disuntikkan secara otomatis ke dalam instruksi AI setiap kali penerjemahan diproses.\n\n" +
+                    "• Fitur Ekspor & Impor JSON:\n" +
+                    "  Gunakan tombol 'Ekspor JSON' untuk mengamankan atau membagikan glosarium ke perangkat lain. Gunakan 'Impor JSON' untuk memuat glosarium terstruktur secara instan."
         ),
         Triple(
-            "Penyimpanan Riwayat & Ekspor File",
+            "6. Riwayat & Ekspor Hasil",
             Icons.Default.History,
-            "• Riwayat Otomatis: Hasil terjemahan dapat disimpan secara otomatis ke tab Riwayat untuk diakses kembali kapan saja.\n" +
-                    "• Ekspor File: Hasil terjemahan dokumen dapat langsung disimpan ke folder Download/MochiTL di penyimpanan internal perangkat Anda."
+            "• Penyimpanan Riwayat Otomatis:\n" +
+                    "  Jika opsi 'Simpan Riwayat Otomatis' di Pengaturan diaktifkan, setiap hasil penerjemahan tersimpan otomatis dan dapat dibuka kembali di Editor kapan saja.\n\n" +
+                    "• Ekspor Langsung Ke Penyimpanan:\n" +
+                    "  Hasil penerjemahan teks dan file dapat disimpan langsung menjadi file file .txt di folder Download/MochiTL perangkat Android Anda."
         )
     )
+
+    val pagerState = rememberPagerState(pageCount = { sections.size })
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "Dokumentasi & Panduan Penggunaan",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Dokumentasi & Panduan",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${pagerState.currentPage + 1} / ${sections.size}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
-        sections.forEach { (title, icon, content) ->
+        // Slider Horizontal Pager
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { page ->
+            val (title, icon, content) = sections[page]
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f)
                         )
                     }
+
                     HorizontalDivider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+
                     Text(
                         text = content,
                         style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 22.sp
+                        lineHeight = 22.sp,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
+            }
+        }
+
+        // Page Indicator Dots & Navigation Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = {
+                    if (pagerState.currentPage > 0) {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                    }
+                },
+                enabled = pagerState.currentPage > 0,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Sebelumnya", fontSize = 13.sp)
+            }
+
+            // Indicator Dots
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(sections.size) { index ->
+                    val isSelected = pagerState.currentPage == index
+                    Box(
+                        modifier = Modifier
+                            .size(if (isSelected) 10.dp else 6.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            )
+                    )
+                }
+            }
+
+            Button(
+                onClick = {
+                    if (pagerState.currentPage < sections.size - 1) {
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                    }
+                },
+                enabled = pagerState.currentPage < sections.size - 1,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text("Berikutnya", fontSize = 13.sp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
             }
         }
     }
