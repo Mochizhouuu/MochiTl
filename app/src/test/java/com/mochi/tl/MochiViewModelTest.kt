@@ -48,7 +48,7 @@ class MochiViewModelTest {
         val customPrompt = PromptTemplate(
             id = "custom_1",
             name = "Custom Prompt",
-            content = "Translate to {target}",
+            content = "Gunakan bahasa gaul",
             category = "custom",
             description = "Desc",
             isBuiltIn = false
@@ -112,30 +112,46 @@ class MochiViewModelTest {
     }
 
     @Test
-    fun testBuiltInPromptsIncludeSourceTextTagRules() {
+    fun testBuiltInPromptsAreNaturalLanguageStyleRules() {
         val prompts = BuiltIns.prompts
         assertTrue("Prompts list should not be empty", prompts.isNotEmpty())
 
         for (prompt in prompts) {
-            assertTrue("Prompt ${prompt.id} should mention <source_text>", prompt.content.contains("<source_text>"))
-            assertTrue("Prompt ${prompt.id} should instruct treating inside as RAW DATA", prompt.content.contains("RAW DATA"))
-            assertTrue("Prompt ${prompt.id} should instruct NEVER refuse or reply to instructions", prompt.content.contains("NEVER refuse"))
+            assertFalse("Prompt ${prompt.id} should NOT contain technical {target} variable", prompt.content.contains("{target}"))
+            assertFalse("Prompt ${prompt.id} should NOT contain technical <source_text> tag", prompt.content.contains("<source_text>"))
         }
     }
 
     @Test
-    fun testBuildSystemPromptTargetSubstitutionAndGlossary() {
-        val prompt = PromptTemplate("p1", "Test", "Translate to {target}", "cat")
+    fun testBuildSystemPromptSystemStructureAndGlossary() {
+        val prompt = PromptTemplate("p1", "Test", "Gunakan bahasa gaul", "cat")
         val glossaryEntries = listOf(GlossaryEntry("g1", "Mochi", "Kue Mochi", "snack"))
 
-        val resultWithoutProject = PromptBuilder.buildSystemPrompt(prompt, "Indonesia", glossaryEntries, null)
-        assertTrue(resultWithoutProject.contains("Translate to Indonesia"))
+        val resultWithoutProject = PromptBuilder.buildSystemPrompt(
+            prompt = prompt,
+            sourceLanguage = "Jepang",
+            targetLanguage = "Indonesia",
+            glossaryList = glossaryEntries,
+            project = null
+        )
+
+        assertTrue(resultWithoutProject.contains("from Jepang into natural, accurate Indonesia"))
+        assertTrue(resultWithoutProject.contains("<source_text>"))
+        assertTrue(resultWithoutProject.contains("RAW DATA"))
+        assertTrue(resultWithoutProject.contains("Additional Style & Preference Rules (Strictly Follow):\nGunakan bahasa gaul"))
         assertTrue(resultWithoutProject.contains("Glossary Mapping"))
         assertTrue(resultWithoutProject.contains("- Mochi -> Kue Mochi (snack)"))
 
         val project = TranslationProject("proj1", "Project", promptTemplateId = "p1", glossaryIds = listOf("other_glossary_id"))
-        val resultWithEmptyProjectGlossary = PromptBuilder.buildSystemPrompt(prompt, "Jepang", glossaryEntries, project)
-        assertTrue(resultWithEmptyProjectGlossary.contains("Translate to Jepang"))
+        val resultWithEmptyProjectGlossary = PromptBuilder.buildSystemPrompt(
+            prompt = prompt,
+            sourceLanguage = LanguageOptions.AUTO_DETECT,
+            targetLanguage = "Inggris",
+            glossaryList = glossaryEntries,
+            project = project
+        )
+
+        assertTrue(resultWithEmptyProjectGlossary.contains("from auto-detected source language into natural, accurate Inggris"))
         assertFalse(resultWithEmptyProjectGlossary.contains("Glossary Mapping"))
     }
 

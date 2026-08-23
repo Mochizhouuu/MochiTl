@@ -73,6 +73,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun translate(
         prompt: PromptTemplate = activePrompt.value,
         source: String = _state.value.input,
+        sourceLanguage: String = LanguageOptions.AUTO_DETECT,
         target: String = "Indonesia",
         project: TranslationProject? = activeProject.value
     ) {
@@ -82,6 +83,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val systemPrompt = PromptBuilder.buildSystemPrompt(
                     prompt = prompt,
+                    sourceLanguage = sourceLanguage,
                     targetLanguage = target,
                     glossaryList = glossary.value,
                     project = project
@@ -106,7 +108,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 _state.value = _state.value.copy(output = result, isTranslating = false, progress = 1f)
                 if (storage.autoSaveHistory && result.isNotBlank()) {
-                    val updated = listOf(TranslationRecord(UUID.randomUUID().toString(), source.take(120), result, "auto", target, currentProvider.id)) + history.value
+                    val updated = listOf(TranslationRecord(UUID.randomUUID().toString(), source.take(120), result, sourceLanguage, target, currentProvider.id)) + history.value
                     history.value = updated.take(100)
                     storage.saveHistory(history.value)
                 }
