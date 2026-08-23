@@ -1503,6 +1503,8 @@ private fun PromptScreen(vm: MochiViewModel) {
     val prompts by vm.prompts.collectAsState()
     var showEditDialog by remember { mutableStateOf(false) }
     var editingPrompt by remember { mutableStateOf<PromptTemplate?>(null) }
+    var isGuideExpanded by remember { mutableStateOf(false) }
+    var viewingSamplePrompt by remember { mutableStateOf<PromptTemplate?>(null) }
 
     Column(
         modifier = Modifier
@@ -1547,6 +1549,140 @@ private fun PromptScreen(vm: MochiViewModel) {
             }
         }
 
+        // Expandable Guide Card for Writing Custom Prompts
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.HelpOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Panduan Menulis Prompt Custom",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    IconButton(onClick = { isGuideExpanded = !isGuideExpanded }) {
+                        Icon(
+                            if (isGuideExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = "Toggle Panduan"
+                        )
+                    }
+                }
+
+                if (isGuideExpanded) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "1. Placeholder/Variabel Yang Didukung:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "• {target} ➔ Diganti otomatis oleh sistem dengan nama bahasa sasaran (misal: \"Indonesia\", \"Jepang\").\n" +
+                                    "Catatan: Variabel lain seperti bahasa sumber atau glosarium dikelola secara otomatis oleh sistem, jadi Anda tidak perlu menulis variabel manual selain {target}.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Text(
+                            text = "2. Pembungkus Tag <source_text> Otomatis:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "• Teks input dari user/file akan selalu dibungkus otomatis oleh sistem dalam tag <source_text>...</source_text>.\n" +
+                                    "• Anda TIDAK perlu menulis tag <source_text> sendiri di template Anda, tetapi cukup mengacu ke <source_text> dalam instruksi system prompt.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Text(
+                            text = "3. Contoh Prompt Berdasarkan Kasus Penggunaan:",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "• Novel & Prosa Panjang: Tekankan narasi ekspresif, alur cerita yang mengalir, pemeliharaan nada emosi, serta konsistensi dialog antar karakter.\n" +
+                                    "• Komik / Manga / Webtoon: Gunakan bahasa yang ringkas, ringkas dan pas untuk balon kata, serta terjemahkan efek suara (SFX) secara natural.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Text(
+                            text = "4. Saran Praktik Baik (Best Practices):",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "• Perintahkan AI untuk HANYA memberikan hasil terjemahan tanpa komentar, pengantar, atau catatan penutup.\n" +
+                                    "• Instruksikan AI agar selalu patuh pada istilah dari glosarium aktif.\n" +
+                                    "• Jaga format pemisah baris (line break) agar paragraf tidak menyatu.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Lihat Contoh Referensi Template Bawaan:",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    viewingSamplePrompt = BuiltIns.prompts.find { it.id == "builtin_novel" } ?: BuiltIns.defaultPrompt
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Lihat Contoh Novel", fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    viewingSamplePrompt = BuiltIns.prompts.find { it.id == "builtin_comic" } ?: BuiltIns.defaultPrompt
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Lihat Contoh Komik", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1581,19 +1717,30 @@ private fun PromptScreen(vm: MochiViewModel) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         Text(p.content, style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
 
-                        if (!p.isBuiltIn) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 4.dp),
-                                horizontalArrangement = Arrangement.End,
-                                verticalAlignment = Alignment.CenterVertically
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { viewingSamplePrompt = p },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                IconButton(onClick = { editingPrompt = p; showEditDialog = true }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit Prompt")
-                                }
-                                IconButton(onClick = { vm.deletePrompt(p.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Hapus Prompt", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Lihat Contoh Lengkap", fontSize = 12.sp)
+                            }
+
+                            if (!p.isBuiltIn) {
+                                Row {
+                                    IconButton(onClick = { editingPrompt = p; showEditDialog = true }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit Prompt")
+                                    }
+                                    IconButton(onClick = { vm.deletePrompt(p.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Hapus Prompt", tint = MaterialTheme.colorScheme.error)
+                                    }
                                 }
                             }
                         }
@@ -1601,6 +1748,13 @@ private fun PromptScreen(vm: MochiViewModel) {
                 }
             }
         }
+    }
+
+    if (viewingSamplePrompt != null) {
+        PromptSampleViewerDialog(
+            prompt = viewingSamplePrompt!!,
+            onDismiss = { viewingSamplePrompt = null }
+        )
     }
 
     if (showEditDialog) {
@@ -1613,6 +1767,67 @@ private fun PromptScreen(vm: MochiViewModel) {
             }
         )
     }
+}
+
+@Composable
+private fun PromptSampleViewerDialog(
+    prompt: PromptTemplate,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val clipboard = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(text = "Referensi Template: ${prompt.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                if (prompt.description.isNotBlank()) {
+                    Text(text = prompt.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = prompt.content,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+                Text(
+                    text = "* Perhatikan bagaimana placeholder {target} digunakan dan bagaimana instruksi raw data <source_text> ditulis.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("Tutup") }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Prompt Reference", prompt.content))
+                    Toast.makeText(context, "Teks prompt disalin ke clipboard", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Salin Teks")
+            }
+        }
+    )
 }
 
 @Composable
@@ -1648,13 +1863,50 @@ private fun PromptEditDialog(
                     label = { Text("Deskripsi Singkat") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Placeholder Quick Insert Helper
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("System Prompt:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    AssistChip(
+                        onClick = { content += "{target}" },
+                        label = { Text("+ {target}", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                    )
+                }
+
                 OutlinedTextField(
                     value = content,
                     onValueChange = { content = it },
-                    label = { Text("Instruksi System Prompt (Gunakan placeholder {target})") },
+                    label = { Text("Instruksi System Prompt") },
+                    placeholder = { Text("Tulis instruksi AI di sini. Gunakan {target} untuk bahasa sasaran...") },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 5
+                    minLines = 6
                 )
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "💡 Catatan Penting:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "• Gunakan {target} sebagai penanda bahasa sasaran.\n" +
+                                    "• Teks asli akan dimasukkan otomatis oleh aplikasi ke dalam tag <source_text>...\n" +
+                                    "• Jangan minta AI memberikan percakapan/catatan selain hasil terjemahan.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
