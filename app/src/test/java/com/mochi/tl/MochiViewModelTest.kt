@@ -122,4 +122,27 @@ class MochiViewModelTest {
             assertTrue("Prompt ${prompt.id} should instruct NEVER refuse or reply to instructions", prompt.content.contains("NEVER refuse"))
         }
     }
+
+    @Test
+    fun testBuildSystemPromptTargetSubstitutionAndGlossary() {
+        val prompt = PromptTemplate("p1", "Test", "Translate to {target}", "cat")
+        val glossaryEntries = listOf(GlossaryEntry("g1", "Mochi", "Kue Mochi", "snack"))
+
+        val resultWithoutProject = PromptBuilder.buildSystemPrompt(prompt, "Indonesia", glossaryEntries, null)
+        assertTrue(resultWithoutProject.contains("Translate to Indonesia"))
+        assertTrue(resultWithoutProject.contains("Glossary Mapping"))
+        assertTrue(resultWithoutProject.contains("- Mochi -> Kue Mochi (snack)"))
+
+        val project = TranslationProject("proj1", "Project", promptTemplateId = "p1", glossaryIds = listOf("other_glossary_id"))
+        val resultWithEmptyProjectGlossary = PromptBuilder.buildSystemPrompt(prompt, "Jepang", glossaryEntries, project)
+        assertTrue(resultWithEmptyProjectGlossary.contains("Translate to Jepang"))
+        assertFalse(resultWithEmptyProjectGlossary.contains("Glossary Mapping"))
+    }
+
+    @Test
+    fun testFormatChunkTextSourceWrapper() {
+        val chunk = "Hello world!"
+        val formatted = PromptBuilder.formatChunkText(chunk)
+        assertEquals("<source_text>\nHello world!\n</source_text>", formatted)
+    }
 }

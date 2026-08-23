@@ -80,19 +80,12 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         job = viewModelScope.launch {
             _state.value = _state.value.copy(input = source, isTranslating = true, isPaused = false, error = null, progress = 0f)
             try {
-                val glossaryList = glossary.value
-                val activeGlossary = if (project != null && project.glossaryIds.isNotEmpty()) {
-                    glossaryList.filter { it.id in project.glossaryIds }
-                } else {
-                    glossaryList
-                }
-
-                val glossaryContext = if (activeGlossary.isNotEmpty()) {
-                    "\n\nGlossary Mapping (Strictly enforce these exact term translations):\n" +
-                            activeGlossary.joinToString("\n") { "- ${it.source} -> ${it.target}" + if (it.note.isNotBlank()) " (${it.note})" else "" }
-                } else ""
-
-                val systemPrompt = prompt.content.replace("{target}", target) + glossaryContext
+                val systemPrompt = PromptBuilder.buildSystemPrompt(
+                    prompt = prompt,
+                    targetLanguage = target,
+                    glossaryList = glossary.value,
+                    project = project
+                )
                 val currentProvider = activeProvider.value.let { prov ->
                     val customUrl = customBaseUrl
                     val modelToUse = customModel?.takeIf { it.isNotBlank() } ?: prov.model
@@ -105,7 +98,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 val result = buildString {
                     chunks.forEachIndexed { index, chunk ->
                         while (_state.value.isPaused) delay(200)
-                        val formattedChunk = "<source_text>\n$chunk\n</source_text>"
+                        val formattedChunk = PromptBuilder.formatChunkText(chunk)
                         append(repository.translate(currentProvider, apiKey, systemPrompt, formattedChunk))
                         if (index != chunks.lastIndex) append("\n")
                         _state.value = _state.value.copy(progress = (index + 1).toFloat() / chunks.size)
