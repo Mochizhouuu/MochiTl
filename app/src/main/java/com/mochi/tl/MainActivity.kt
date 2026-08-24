@@ -217,7 +217,7 @@ fun MochiApp(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "AI Translation Workspace • v1.0.6",
+                                text = "AI Translation Workspace • v1.0.0",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
