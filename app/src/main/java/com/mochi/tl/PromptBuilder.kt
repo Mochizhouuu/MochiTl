@@ -48,7 +48,34 @@ object PromptBuilder {
                 "5. Do NOT output commentary, notes, or intros. Output ONLY the translated text.\n" +
                 "6. Strictly adhere to provided glossary terms if present." +
                 customRulesSection +
-                glossaryContext
+                glossaryContext +
+                properNounSection(prompt, targetLanguage)
+    }
+
+    /**
+     * Aturan penanganan kata benda khusus:
+     * - SEMUA konteks : nama orang/karakter WAJIB diromanisasi (Hepburn,
+     *   Revised Romanization, dst.) — tidak diterjemahkan menjadi kata
+     *   bahasa target.
+     * - Konteks fiksi (kategori "novel" / "comic"): nama jurus/skill,
+     *   gelar/title, dan senjata diterjemahkan ke ENGLISH mengikuti konvensi
+     *   lokalisasi anime/manga/game, konsisten di seluruh teks.
+     */
+    private fun properNounSection(prompt: PromptTemplate, targetLanguage: String): String {
+        val sb = StringBuilder("\n\nProper Nouns Handling (Strictly Follow):\n")
+        sb.append(
+            "- Personal names (characters, people) MUST be ROMANIZED using the standard romanization of their original language " +
+                    "(e.g. Hepburn for Japanese, Revised Romanization for Korean, Pinyin for Mandarin). " +
+                    "Do NOT translate personal names into $targetLanguage words."
+        )
+        when (prompt.category.lowercase()) {
+            "novel", "comic" -> sb.append(
+                "\n- Fictional works: names of skills/special techniques, titles/ranks, and signature weapons MUST be translated into natural ENGLISH " +
+                        "following common anime/manga/game localization conventions (e.g. \"Hien Shougekiha\" -> \"Flying Shadow Rising Fist\"). " +
+                        "Keep them concise and reuse the exact same English rendering every time the term appears."
+            )
+        }
+        return sb.toString()
     }
 
     /**

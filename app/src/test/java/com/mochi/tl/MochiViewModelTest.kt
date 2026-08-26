@@ -163,6 +163,36 @@ class MochiViewModelTest {
     }
 
     @Test
+    fun testFictionPromptTranslatesSkillsTitlesWeaponsToEnglish() {
+        for (category in listOf("novel", "comic")) {
+            val prompt = PromptTemplate("p_$category", "Test", "Gaya fiksi.", category)
+            val result = PromptBuilder.buildSystemPrompt(
+                prompt = prompt,
+                sourceLanguage = "Jepang",
+                targetLanguage = "Indonesia",
+                glossaryList = emptyList()
+            )
+            assertTrue("Kategori $category harus memuat aturan ENGLISH", result.contains("natural ENGLISH"))
+            assertTrue(result.contains("skills/special techniques"))
+        }
+    }
+
+    @Test
+    fun testAllPromptsRomanizePersonalNames() {
+        val prompt = PromptTemplate("p1", "Test", "Isi", "academic")
+        val result = PromptBuilder.buildSystemPrompt(
+            prompt = prompt,
+            sourceLanguage = LanguageOptions.AUTO_DETECT,
+            targetLanguage = "Indonesia",
+            glossaryList = emptyList()
+        )
+        assertTrue(result.contains("Proper Nouns Handling"))
+        assertTrue(result.contains("MUST be ROMANIZED"))
+        // Kategori non-fiksi tidak boleh mendapat aturan skill->ENGLISH.
+        assertFalse(result.contains("natural ENGLISH"))
+    }
+
+    @Test
     fun testChunkShortTextReturnsSingleChunk() {
         val text = "Paragraf pertama.\n\nParagraf kedua."
         assertEquals(listOf(text), chunkByParagraphs(text))
