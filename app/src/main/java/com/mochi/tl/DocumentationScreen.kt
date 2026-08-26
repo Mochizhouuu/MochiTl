@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
  * Diekstrak dari MainActivity.kt sebagai bagian dari pemisahan UI
  * per-screen.
  */
+@Composable
 internal fun DocumentationScreen(initialPage: Int = 0) {
     val sections = listOf(
         Triple(
