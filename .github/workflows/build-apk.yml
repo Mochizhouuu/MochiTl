@@ -47,6 +47,9 @@ jobs:
           storeFile=release-key.jks
           EOF
 
+      - name: Jalankan unit test
+        run: gradle :app:testDebugUnitTest --no-daemon
+
       - name: Build APK release (signed)
         run: gradle :app:assembleRelease --no-daemon
 

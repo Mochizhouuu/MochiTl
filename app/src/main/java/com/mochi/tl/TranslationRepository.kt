@@ -56,8 +56,11 @@ class TranslationRepository {
 
     private suspend fun translateGemini(config: ProviderConfig, apiKey: String, system: String, text: String): String {
         require(apiKey.isNotBlank()) { "API key Gemini belum diatur." }
-        val response = client.post("${config.baseUrl.trimEnd('/')}/v1beta/models/${config.model}:generateContent?key=$apiKey") {
+        // API key dikirim via header x-goog-api-key, BUKAN query param ?key=
+        // agar tidak ikut tercatat di log HTTP/proxy/error reporting.
+        val response = client.post("${config.baseUrl.trimEnd('/')}/v1beta/models/${config.model}:generateContent") {
             contentType(ContentType.Application.Json)
+            header("x-goog-api-key", apiKey)
             setBody(GeminiRequest(listOf(GeminiContent(listOf(GeminiPart(text)))), GeminiContent(listOf(GeminiPart(system)), "system")))
         }
         return response.body<GeminiResponse>().candidates.firstOrNull()?.content?.parts?.joinToString("") { it.text }?.trim().orEmpty()
@@ -76,7 +79,9 @@ class TranslationRepository {
         val modelList = when (config.id) {
             "gemini" -> {
                 require(!apiKey.isNullOrBlank()) { "API key Gemini belum diatur." }
-                val resp = client.get("${config.baseUrl.trimEnd('/')}/v1beta/models?key=$apiKey").body<GeminiModelsResponse>()
+                val resp = client.get("${config.baseUrl.trimEnd('/')}/v1beta/models") {
+                    header("x-goog-api-key", apiKey)
+                }.body<GeminiModelsResponse>()
                 resp.models.map { it.name.removePrefix("models/") }.filter { it.contains("gemini", ignoreCase = true) }
             }
             "ollama" -> {

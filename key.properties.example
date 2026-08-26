@@ -1,0 +1,6 @@
+# Salin file ini menjadi key.properties di root project, lalu isi nilai aslinya.
+# File key.properties dan *.jks TIDAK boleh di-commit (sudah di-gitignore).
+storeFile=release-key.jks
+storePassword=ganti-dengan-password-store
+keyAlias=ganti-dengan-alias
+keyPassword=ganti-dengan-password-key

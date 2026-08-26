@@ -3,6 +3,7 @@ package com.mochi.tl
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,54 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import java.util.UUID
+
+/**
+ * Memecah teks menjadi chunk <= [maxChars] dengan TETAP menghormati batas
+ * paragraf/baris — bukan pemotongan paksa di tengah kata/kalimat yang
+ * merusak konteks terjemahan. Paragraf tunggal yang lebih panjang dari
+ * [maxChars] dipotong paksa hanya sebagai jalan terakhir.
+ */
+internal fun chunkByParagraphs(text: String, maxChars: Int = 4000): List<String> {
+    if (text.isBlank()) return emptyList()
+    if (text.length <= maxChars) return listOf(text)
+
+    val chunks = mutableListOf<String>()
+    val current = StringBuilder()
+
+    fun flushCurrent() {
+        if (current.isNotEmpty()) {
+            chunks.add(current.toString())
+            current.clear()
+        }
+    }
+
+    for (paragraph in text.split("\n")) {
+        when {
+            // Jalan terakhir: paragraf tunggal melebihi batas → potong paksa.
+            paragraph.length + 1 > maxChars -> {
+                flushCurrent()
+                var start = 0
+                while (start < paragraph.length) {
+                    val end = minOf(start + maxChars, paragraph.length)
+                    chunks.add(paragraph.substring(start, end))
+                    start = end
+                }
+            }
+            // Paragraf berikutnya tidak muat → simpan buffer dulu.
+            current.length + paragraph.length + 1 > maxChars -> {
+                flushCurrent()
+                current.append(paragraph)
+            }
+            else -> {
+                if (current.isNotEmpty()) current.append('\n')
+                current.append(paragraph)
+            }
+        }
+    }
+    flushCurrent()
+
+    return chunks.filter { it.isNotBlank() }.ifEmpty { listOf(text) }
+}
 
 class MochiViewModel(app: Application) : AndroidViewModel(app) {
     private val storage = AppStorage(app)
@@ -96,22 +145,46 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                     res
                 }
 
-                val chunks = source.chunked(4000)
-                val result = buildString {
-                    chunks.forEachIndexed { index, chunk ->
-                        while (_state.value.isPaused) delay(200)
-                        val formattedChunk = PromptBuilder.formatChunkText(chunk)
-                        append(repository.translate(currentProvider, apiKey, systemPrompt, formattedChunk))
-                        if (index != chunks.lastIndex) append("\n")
-                        _state.value = _state.value.copy(progress = (index + 1).toFloat() / chunks.size)
+                val chunks = chunkByParagraphs(source)
+                val results = MutableList(chunks.size) { "" }
+
+                chunks.forEachIndexed { index, chunk ->
+                    while (_state.value.isPaused) delay(200)
+
+                    try {
+                        results[index] = translateChunkWithRetry(
+                            provider = currentProvider,
+                            systemPrompt = systemPrompt,
+                            chunk = PromptBuilder.formatChunkText(chunk)
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        // Gagal setelah semua percobaan ulang: simpan hasil
+                        // parsial agar kerja user tidak hilang, lalu laporkan.
+                        val partial = results.filter { it.isNotBlank() }.joinToString("\n")
+                        _state.value = _state.value.copy(
+                            output = partial,
+                            isTranslating = false,
+                            error = "Gagal di bagian ${index + 1}/${chunks.size}: ${e.message ?: "terjemahan gagal"}. Hasil sebagian sudah disimpan."
+                        )
+                        return@launch
                     }
+
+                    _state.value = _state.value.copy(progress = (index + 1).toFloat() / chunks.size)
                 }
+
+                val result = results.joinToString("\n")
                 _state.value = _state.value.copy(output = result, isTranslating = false, progress = 1f)
                 if (storage.autoSaveHistory && result.isNotBlank()) {
                     val updated = listOf(TranslationRecord(UUID.randomUUID().toString(), source.take(120), result, sourceLanguage, target, currentProvider.id)) + history.value
                     history.value = updated.take(100)
                     storage.saveHistory(history.value)
                 }
+            } catch (e: CancellationException) {
+                // Pembatalan oleh user (cancel()) bukan error — jangan timpa
+                // pesan state dengan teks exception.
+                throw e
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isTranslating = false, error = e.message ?: "Terjemahan gagal")
             }
@@ -132,6 +205,30 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun pause() { _state.value = _state.value.copy(isPaused = true) }
     fun resume() { _state.value = _state.value.copy(isPaused = false) }
     fun cancel() { job?.cancel(); _state.value = _state.value.copy(isTranslating = false, isPaused = false, progress = 0f) }
+
+    /**
+     * Menerjemahkan satu chunk dengan percobaan ulang otomatis (maks
+     * [MAX_ATTEMPTS] kali) plus backoff progresif — menangani error sementara
+     * seperti rate limit 429 atau jaringan terputus tanpa langsung gagal.
+     */
+    private suspend fun translateChunkWithRetry(
+        provider: ProviderConfig,
+        systemPrompt: String,
+        chunk: String,
+    ): String {
+        var lastError: Exception? = null
+        repeat(MAX_ATTEMPTS) { attempt ->
+            try {
+                return repository.translate(provider, apiKey, systemPrompt, chunk)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                lastError = e
+                if (attempt < MAX_ATTEMPTS - 1) delay(RETRY_BACKOFF_MS * (attempt + 1))
+            }
+        }
+        throw lastError ?: IllegalStateException("Terjemahan gagal")
+    }
 
     fun savePrompt(prompt: PromptTemplate) {
         val updated = prompts.value.filterNot { it.id == prompt.id } + prompt
@@ -213,4 +310,9 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setAutoSave(value: Boolean) { storage.autoSaveHistory = value }
     fun autoSave(): Boolean = storage.autoSaveHistory
+
+    private companion object {
+        const val MAX_ATTEMPTS = 3
+        const val RETRY_BACKOFF_MS = 1500L
+    }
 }
