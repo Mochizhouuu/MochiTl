@@ -9,9 +9,11 @@ import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
 import org.xmlpull.v1.XmlPullParser
 import java.io.BufferedInputStream
+import java.io.BufferedReader
 import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.net.URLDecoder
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -85,8 +87,8 @@ object FileParser {
         return null
     }
 
-    private fun readZipEntryBytes(zip: ZipInputStream): ByteArray =
-        zip.readBytes()
+    private fun readZipEntryBytes(input: InputStream): ByteArray =
+        input.readBytes()
 
     // ===== DOCX =====
 
