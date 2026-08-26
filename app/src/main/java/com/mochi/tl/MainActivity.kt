@@ -489,9 +489,50 @@ private fun PromptScreen(
     onNavigateToDocumentation: (Int) -> Unit
 ) {
     val prompts by vm.prompts.collectAsState()
+    val context = LocalContext.current
     var showEditDialog by remember { mutableStateOf(false) }
     var editingPrompt by remember { mutableStateOf<PromptTemplate?>(null) }
     var viewingSamplePrompt by remember { mutableStateOf<PromptTemplate?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredPrompts = remember(prompts, searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) prompts else prompts.filter {
+            it.name.contains(q, true) || it.description.contains(q, true) || it.content.contains(q, true)
+        }
+    }
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { destinationUri ->
+            runCatching {
+                val json = vm.exportPromptsJson()
+                context.contentResolver.openOutputStream(destinationUri)?.use { out ->
+                    out.write(json.toByteArray())
+                }
+                Toast.makeText(context, "Prompt berhasil diekspor", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Gagal mengekspor: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { sourceUri ->
+            runCatching {
+                val content = context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                    input.bufferedReader().readText()
+                }.orEmpty()
+                val result = vm.importPromptsJson(content)
+                if (result.isSuccess) {
+                    Toast.makeText(context, "Berhasil mengimpor ${result.getOrDefault(0)} prompt", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, "Gagal mengimpor: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }.onFailure {
+                Toast.makeText(context, "Gagal membaca file: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -575,11 +616,58 @@ private fun PromptScreen(
             }
         }
 
+        // Pencarian & cadangan prompt
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            placeholder = { Text("Cari prompt (nama / aturan)...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { exportLauncher.launch("prompt_mochitl.json") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Ekspor JSON", fontSize = 13.sp)
+            }
+
+            OutlinedButton(
+                onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Impor JSON", fontSize = 13.sp)
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(prompts) { p ->
+            if (filteredPrompts.isEmpty()) {
+                item {
+                    Text(
+                        if (searchQuery.isBlank()) "Belum ada prompt. Tambahkan atau tekan Reset untuk memulai."
+                        else "Tidak ada prompt yang cocok dengan pencarian.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            items(filteredPrompts) { p ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -627,12 +715,21 @@ private fun PromptScreen(
 
                             if (!p.isBuiltIn) {
                                 Row {
+                                    IconButton(onClick = { vm.duplicatePrompt(p.id) }) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplikat Prompt")
+                                    }
                                     IconButton(onClick = { editingPrompt = p; showEditDialog = true }) {
                                         Icon(Icons.Default.Edit, contentDescription = "Edit Prompt")
                                     }
                                     IconButton(onClick = { vm.deletePrompt(p.id) }) {
                                         Icon(Icons.Default.Delete, contentDescription = "Hapus Prompt", tint = MaterialTheme.colorScheme.error)
                                     }
+                                }
+                            } else {
+                                // Built-in tidak bisa diedit/hapus, tapi bisa diduplikat
+                                // menjadi salinan kustom.
+                                IconButton(onClick = { vm.duplicatePrompt(p.id) }) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Duplikat sebagai kustom")
                                 }
                             }
                         }
@@ -705,8 +802,14 @@ private fun GlossaryScreen(vm: MochiViewModel) {
         }
     }
 
-    val filtered = glossaryList.filter {
-        it.source.contains(searchQuery, ignoreCase = true) || it.target.contains(searchQuery, ignoreCase = true)
+    val filtered = remember(glossaryList, searchQuery) {
+        val q = searchQuery.trim()
+        glossaryList
+            .filter {
+                q.isEmpty() || it.source.contains(q, true) ||
+                        it.target.contains(q, true) || it.note.contains(q, true)
+            }
+            .sortedWith(compareBy({ it.source.lowercase() }, { it.target.lowercase() }))
     }
 
     Column(
@@ -772,9 +875,23 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            placeholder = { Text("Cari istilah glosarium...") },
+            placeholder = { Text("Cari istilah glosarium (istilah / terjemahan / catatan)...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Default.Close, contentDescription = "Bersihkan pencarian")
+                    }
+                }
+            },
             singleLine = true
+        )
+
+        Text(
+            text = if (searchQuery.isBlank()) "${glossaryList.size} istilah • diurutkan abjad"
+            else "${filtered.size} dari ${glossaryList.size} istilah",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         LazyColumn(
@@ -783,7 +900,11 @@ private fun GlossaryScreen(vm: MochiViewModel) {
         ) {
             if (filtered.isEmpty()) {
                 item {
-                    Text("Belum ada istilah glosarium. Tambahkan istilah nama karakter, jurus, atau tempat.", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        if (glossaryList.isEmpty()) "Belum ada istilah glosarium. Tambahkan istilah nama karakter, jurus, atau tempat."
+                        else "Tidak ada istilah yang cocok dengan \"$searchQuery\".",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
 

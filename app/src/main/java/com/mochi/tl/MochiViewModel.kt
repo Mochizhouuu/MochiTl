@@ -271,6 +271,51 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Duplikat prompt (termasuk built-in) menjadi salinan kustom yang bisa
+     * diedit. @return prompt baru, atau null jika id tidak ditemukan.
+     */
+    fun duplicatePrompt(id: String): PromptTemplate? {
+        val source = prompts.value.firstOrNull { it.id == id } ?: return null
+        val copy = source.copy(
+            id = UUID.randomUUID().toString(),
+            name = "${source.name} (salinan)",
+            isBuiltIn = false
+        )
+        savePrompt(copy)
+        activePrompt.value = copy
+        return copy
+    }
+
+    /** Ekspor seluruh prompt (built-in + kustom) sebagai JSON. */
+    fun exportPromptsJson(): String = storage.json.encodeToString(prompts.value)
+
+    /**
+     * Impor prompt dari JSON hasil ekspor. Entri dengan id yang sama akan
+     * ditimpa; built-in bawaan selalu dipertahankan. @return jumlah entri diimpor.
+     */
+    fun importPromptsJson(jsonContent: String): Result<Int> = runCatching {
+        val importedList = storage.json.decodeFromString<List<PromptTemplate>>(jsonContent)
+        val current = prompts.value.associateBy { it.id }.toMutableMap()
+        var importedCount = 0
+        for (item in importedList) {
+            if (item.content.isBlank()) continue
+            val valid = item.copy(
+                id = item.id.ifBlank { UUID.randomUUID().toString() },
+                name = item.name.trim().ifBlank { "Prompt tanpa nama" },
+                content = item.content.trim(),
+                category = item.category.trim().ifBlank { "custom" }
+            )
+            current[valid.id] = valid
+            importedCount++
+        }
+        BuiltIns.prompts.forEach { builtin -> current.putIfAbsent(builtin.id, builtin) }
+        val newList = current.values.toList()
+        prompts.value = newList
+        storage.savePrompts(newList)
+        importedCount
+    }
+
     fun saveGlossaryItem(entry: GlossaryEntry) {
         glossary.value = (glossary.value.filterNot { it.id == entry.id } + entry)
         storage.saveGlossary(glossary.value)
