@@ -338,8 +338,6 @@ private fun screenTitle(screen: Screen) = when (screen) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 
-@OptIn(ExperimentalMaterial3Api::class)
-
 @Composable
 private fun ProjectsScreen(vm: MochiViewModel) {
     val projects by vm.projects.collectAsState()
