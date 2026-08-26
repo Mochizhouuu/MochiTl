@@ -1,5 +1,7 @@
 package com.mochi.tl
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -12,9 +14,11 @@ data class ProviderConfig(
     val isBuiltIn: Boolean = false
 )
 
+/** Prompt template tersimpan di Room (tabel "prompts"). */
 @Serializable
+@Entity(tableName = "prompts")
 data class PromptTemplate(
-    val id: String,
+    @PrimaryKey val id: String,
     val name: String,
     val content: String,
     val category: String,
@@ -22,17 +26,21 @@ data class PromptTemplate(
     val isBuiltIn: Boolean = false
 )
 
+/** Istilah glosarium tersimpan di Room (tabel "glossary"). */
 @Serializable
+@Entity(tableName = "glossary")
 data class GlossaryEntry(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    @PrimaryKey val id: String = java.util.UUID.randomUUID().toString(),
     val source: String,
     val target: String,
     val note: String = ""
 )
 
+/** Project terjemahan tersimpan di Room (tabel "projects"). */
 @Serializable
+@Entity(tableName = "projects")
 data class TranslationProject(
-    val id: String,
+    @PrimaryKey val id: String,
     val name: String,
     val description: String = "",
     val promptTemplateId: String = "",
@@ -43,9 +51,11 @@ data class TranslationProject(
     val targetLanguage: String = "id"
 )
 
+/** Riwayat terjemahan tersimpan di Room (tabel "history", dibatasi 100 entri). */
 @Serializable
+@Entity(tableName = "history")
 data class TranslationRecord(
-    val id: String,
+    @PrimaryKey val id: String,
     val sourcePreview: String,
     val translatedText: String,
     val sourceLanguage: String,

@@ -1,12 +1,28 @@
 package com.mochi.tl
 
 import android.content.Context
+import androidx.room.Room
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/**
+ * Penyimpanan aplikasi.
+ *
+ * - Pengaturan sederhana (API key terenkripsi, base URL, model, parameter
+ *   generasi, flag auto-save) tetap memakai SharedPreferences.
+ * - Koleksi (projects, prompts, glossary, history) kini tersimpan di
+ *   database Room ([MochiTlDatabase]) — lebih aman & scalable dibanding
+ *   JSON string di SharedPreferences. Data lama dimigrasikan otomatis
+ *   sekali saat pertama kali dibuka.
+ *
+ * API tetap sinkron agar tidak mengubah ViewModel/UI/test; ukuran data
+ * koleksi kecil (≤100 riwayat) sehingga biayanya dapat diabaikan.
+ */
 class AppStorage(context: Context) {
+    private val appContext = context.applicationContext
     private val plain = context.getSharedPreferences("mochitl_preferences", Context.MODE_PRIVATE)
     private val secure = runCatching {
         EncryptedSharedPreferences.create(
@@ -19,6 +35,49 @@ class AppStorage(context: Context) {
     }.getOrElse { context.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE) }
     val json = Json { ignoreUnknownKeys = true }
 
+    private val db: MochiTlDatabase by lazy {
+        Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
+            .allowMainThreadQueries()
+            .build()
+    }
+
+    init {
+        migrateLegacyPrefsToRoom()
+    }
+
+    /** Sekali jalan: pindahkan koleksi JSON lama di prefs ke Room. */
+    private fun migrateLegacyPrefsToRoom() {
+        if (plain.getBoolean("room_migrated", false)) return
+        runBlocking {
+            if (db.projectDao().getAll().isEmpty()) {
+                decodeLegacy<TranslationProject>("projects")?.let { db.projectDao().upsertAll(it) }
+            }
+            if (db.glossaryDao().getAll().isEmpty()) {
+                decodeLegacy<GlossaryEntry>("glossary")?.let { db.glossaryDao().upsertAll(it) }
+            }
+            if (db.historyDao().getAll().isEmpty()) {
+                decodeLegacy<TranslationRecord>("history")?.let { db.historyDao().upsertAll(it.take(100)) }
+            }
+            if (db.promptDao().getAll().isEmpty()) {
+                // Prompt lama sudah menyertakan built-ins; gabungkan dengan
+                // bawaan agar built-ins selalu ada meski data lama rusak.
+                val legacyPrompts = decodeLegacy<PromptTemplate>("prompts").orEmpty()
+                db.promptDao().upsertAll(
+                    (BuiltIns.prompts + legacyPrompts).associateBy { it.id }.values.toList()
+                )
+            }
+        }
+        // Key lama dibiarkan sebagai cadangan; penanda mencegah migrasi ulang.
+        plain.edit().putBoolean("room_migrated", true).apply()
+    }
+
+    private inline fun <reified T> decodeLegacy(key: String): List<T>? =
+        plain.getString(key, null)?.let { raw ->
+            runCatching { json.decodeFromString<List<T>>(raw) }.getOrNull()
+        }
+
+    // ===== Kredensial & pengaturan provider =====
+
     fun saveApiKey(providerId: String, value: String) = secure.edit().putString("api_key_$providerId", value).apply()
     fun apiKey(providerId: String): String? = secure.getString("api_key_$providerId", null)
     fun deleteApiKey(providerId: String) = secure.edit().remove("api_key_$providerId").apply()
@@ -30,14 +89,32 @@ class AppStorage(context: Context) {
     fun model(providerId: String): String? = plain.getString("model_$providerId", null)
     fun deleteModel(providerId: String) = plain.edit().remove("model_$providerId").apply()
 
-    fun saveProjects(items: List<TranslationProject>) = plain.edit().putString("projects", json.encodeToString(items)).apply()
-    fun projects(): List<TranslationProject> = plain.getString("projects", null)?.let { runCatching { json.decodeFromString<List<TranslationProject>>(it) }.getOrDefault(emptyList()) } ?: emptyList()
-    fun savePrompts(items: List<PromptTemplate>) = plain.edit().putString("prompts", json.encodeToString(items)).apply()
-    fun prompts(): List<PromptTemplate> = plain.getString("prompts", null)?.let { runCatching { json.decodeFromString<List<PromptTemplate>>(it) }.getOrDefault(BuiltIns.prompts) } ?: BuiltIns.prompts
-    fun saveHistory(items: List<TranslationRecord>) = plain.edit().putString("history", json.encodeToString(items.take(100))).apply()
-    fun history(): List<TranslationRecord> = plain.getString("history", null)?.let { runCatching { json.decodeFromString<List<TranslationRecord>>(it) }.getOrDefault(emptyList()) } ?: emptyList()
-    fun saveGlossary(items: List<GlossaryEntry>) = plain.edit().putString("glossary", json.encodeToString(items)).apply()
-    fun glossary(): List<GlossaryEntry> = plain.getString("glossary", null)?.let { runCatching { json.decodeFromString<List<GlossaryEntry>>(it) }.getOrDefault(emptyList()) } ?: emptyList()
+    // ===== Koleksi di Room =====
+
+    fun saveProjects(items: List<TranslationProject>) = runBlocking {
+        db.projectDao().clear(); db.projectDao().upsertAll(items)
+    }
+    fun projects(): List<TranslationProject> = runBlocking { db.projectDao().getAll() }
+
+    fun savePrompts(items: List<PromptTemplate>) = runBlocking {
+        db.promptDao().clear(); db.promptDao().upsertAll(items)
+    }
+    fun prompts(): List<PromptTemplate> = runBlocking {
+        db.promptDao().getAll().ifEmpty { BuiltIns.prompts }
+    }
+
+    fun saveHistory(items: List<TranslationRecord>) = runBlocking {
+        db.historyDao().clear(); db.historyDao().upsertAll(items.take(100))
+    }
+    fun history(): List<TranslationRecord> = runBlocking { db.historyDao().getAll() }
+
+    fun saveGlossary(items: List<GlossaryEntry>) = runBlocking {
+        db.glossaryDao().clear(); db.glossaryDao().upsertAll(items)
+    }
+    fun glossary(): List<GlossaryEntry> = runBlocking { db.glossaryDao().getAll() }
+
+    // ===== Pengaturan umum =====
+
     var autoSaveHistory: Boolean
         get() = plain.getBoolean("auto_save_history", false)
         set(value) { plain.edit().putBoolean("auto_save_history", value).apply() }
