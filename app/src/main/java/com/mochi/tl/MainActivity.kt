@@ -861,7 +861,3 @@ private fun GlossaryScreen(vm: MochiViewModel) {
         )
     }
 }
-
-
-
-@OptIn(ExperimentalMaterial3Api::class)
