@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
-import java.util.Collections
 import java.util.UUID
 
 /**
@@ -78,7 +77,8 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Koleksi yang sudah diedit sejak proses start — hidrasi awal tidak boleh menimpanya. */
-    private val editedCollections: MutableSet<String> = Collections.newKeySet()
+    private val editedCollections: MutableSet<String> =
+        java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
     private fun persistAsync(vararg collections: String, block: suspend () -> Unit) {
         collections.forEach { editedCollections.add(it) }
