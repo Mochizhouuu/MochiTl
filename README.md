@@ -1,38 +1,47 @@
 # MochiTL (Kotlin Native)
 
-Aplikasi penerjemah AI untuk manga, manhwa, light novel — dibangun dengan
-Kotlin + Jetpack Compose, terhubung ke Gemini, OpenAI, OpenRouter, Ollama,
-atau LM Studio.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Android-green)](https://www.android.com/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9-purple)](https://kotlinlang.org/)
 
-## Status
+Aplikasi penerjemah AI untuk manga, manhwa, light novel, dan dokumen — dibangun
+dengan Kotlin + Jetpack Compose, terhubung ke Gemini, OpenAI, OpenRouter,
+Ollama, atau LM Studio.
 
-Terjemahkan teks per-chunk dengan retry otomatis + backoff, ganti provider AI,
-simpan API key terenkripsi, riwayat terjemahan, export ke folder Download.
-Parser dokumen mendukung TXT, EPUB (urutan spine), DOCX, dan PDF.
-Parameter generasi AI (temperature & max token) bisa diatur di Pengaturan.
-Fitur yang belum lengkap: database Room (data masih di SharedPreferences),
-Prompt Manager dan Glossary (masih tampilan dasar).
+## Fitur
 
-## Build APK
+- **Multi-provider AI** — Gemini, OpenAI, OpenRouter, dan server lokal
+  (Ollama / LM Studio) dengan uji koneksi & pengambilan daftar model otomatis.
+- **Penerjemahan dokumen** — TXT, EPUB (urutan baca spine), DOCX, dan PDF.
+- **Chunking cerdas** — pemotongan di batas paragraf (~4000 karakter) agar
+  konteks terjemahan tidak terpotong di tengah kalimat.
+- **Retry otomatis + backoff** — percobaan ulang per chunk saat kena rate limit
+  atau jaringan terputus; hasil sebagian tetap disimpan bila ada bagian gagal.
+- **Prompt Manager** — template gaya bawaan (novel, komik, akademik, pembersih
+  OCR) + prompt kustom, pencarian, duplikasi, serta ekspor/impor JSON.
+- **Glosarium** — istilah wajib (nama tokoh, jurus, tempat) disuntikkan
+  otomatis ke setiap permintaan; ekspor/impor JSON.
+- **Aturan kata benda khusus** — nama orang diromanisasi (Hepburn, Revised,
+  Pinyin); nama jurus/title/senjata diterjemahkan ke Inggris untuk konteks fiksi.
+- **Keamanan** — API key tersimpan terenkripsi (Android Keystore), teks user
+  dibungkus tag anti-injection `<source_text>`.
+- **Riwayat & proyek** — riwayat terjemahan otomatis (dibatasi 100 entri),
+  proyek per-judul yang mengikat prompt/provider/glosarium/bahasa target.
 
-Build otomatis lewat GitHub Actions setiap push ke main. Cek hasilnya
-di tab Actions repo ini — unduh APK dari bagian Artifacts pada run yang
-sudah selesai, atau dari tab Releases kalau build dipicu lewat tag versi.
+## Penyimpanan Data
 
-### Build manual via Termux
-
-pkg install -y openjdk-17 gradle
-cd ~/mochitl-kotlin
-gradle wrapper
-./gradlew :app:assembleRelease
-
-Build release butuh keystore signing. Salin key.properties.example
-menjadi key.properties di root proyek, isi dengan password keystore
-kamu. File key.properties dan *.jks sudah di-gitignore, jangan pernah
-di-commit.
+Metadata koleksi (proyek, prompt, glosarium, riwayat) tersimpan di database
+Room. Pengaturan ringan seperti API key, model pilihan, dan parameter generasi
+disimpan di SharedPreferences (API key melalui EncryptedSharedPreferences).
+Data lama dari versi SharedPreferences dimigrasikan otomatis saat aplikasi
+pertama kali dibuka.
 
 ## Stack
 
-Jetpack Compose (Material 3), Ktor, kotlinx.serialization,
-EncryptedSharedPreferences (Android Keystore) untuk API key,
+Jetpack Compose (Material 3), Room, Ktor, kotlinx.serialization,
+EncryptedSharedPreferences (Android Keystore), PDFBox Android,
 minSdk 26 / targetSdk 35.
+
+## Lisensi
+
+Dirilis under [MIT License](LICENSE).
