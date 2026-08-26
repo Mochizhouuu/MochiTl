@@ -102,6 +102,8 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Parser PDF native (PDFBox port Android) untuk FileParser
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("io.ktor:ktor-client-android:3.0.2")
     implementation("io.ktor:ktor-client-content-negotiation:3.0.2")

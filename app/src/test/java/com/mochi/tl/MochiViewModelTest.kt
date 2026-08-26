@@ -161,4 +161,45 @@ class MochiViewModelTest {
         val formatted = PromptBuilder.formatChunkText(chunk)
         assertEquals("<source_text>\nHello world!\n</source_text>", formatted)
     }
+
+    @Test
+    fun testChunkShortTextReturnsSingleChunk() {
+        val text = "Paragraf pertama.\n\nParagraf kedua."
+        assertEquals(listOf(text), chunkByParagraphs(text))
+    }
+
+    @Test
+    fun testChunkBlankTextReturnsEmpty() {
+        assertTrue(chunkByParagraphs("   \n  ").isEmpty())
+    }
+
+    @Test
+    fun testChunkLongTextRespectsMaxCharsAndLineBoundaries() {
+        val expectedLines = (1..300).map { "Baris ke-$it berisi kalimat yang cukup panjang untuk pengujian." }
+        val longText = expectedLines.joinToString("\n")
+        val chunks = chunkByParagraphs(longText, 1000)
+
+        assertTrue("Harus terpecah menjadi beberapa chunk", chunks.size > 1)
+        assertTrue(chunks.all { it.length <= 1000 })
+
+        // Tidak boleh memotong di tengah baris/paragraf.
+        chunks.forEachIndexed { index, chunk ->
+            if (index < chunks.lastIndex) {
+                assertTrue(
+                    "Chunk harus berakhir di batas baris",
+                    chunk.endsWith("\n") || chunk.endsWith(".")
+                )
+            }
+        }
+
+        // Setiap baris harus utuh dan muncul tepat satu kali.
+        assertEquals(expectedLines, chunks.flatMap { it.split("\n") })
+    }
+
+    @Test
+    fun testChunkSingleOversizedParagraphIsForceSplit() {
+        val single = "y".repeat(5000)
+        val chunks = chunkByParagraphs(single, 4000)
+        assertEquals(listOf("y".repeat(4000), "y".repeat(1000)), chunks)
+    }
 }

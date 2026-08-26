@@ -6,10 +6,12 @@ atau LM Studio.
 
 ## Status
 
-Kerangka awal: terjemahkan teks per-chunk, ganti provider AI, simpan API
-key terenkripsi, riwayat terjemahan, export ke folder Download. Fitur
-yang belum lengkap: parser file PDF/EPUB/DOCX, database Room, Prompt
-Manager dan Glossary (masih tampilan dasar).
+Terjemahkan teks per-chunk dengan retry otomatis + backoff, ganti provider AI,
+simpan API key terenkripsi, riwayat terjemahan, export ke folder Download.
+Parser dokumen mendukung TXT, EPUB (urutan spine), DOCX, dan PDF.
+Parameter generasi AI (temperature & max token) bisa diatur di Pengaturan.
+Fitur yang belum lengkap: database Room (data masih di SharedPreferences),
+Prompt Manager dan Glossary (masih tampilan dasar).
 
 ## Build APK
 

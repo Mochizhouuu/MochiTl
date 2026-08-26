@@ -2226,6 +2226,8 @@ private fun SettingsScreen(vm: MochiViewModel) {
     var modelText by remember { mutableStateOf(vm.customModel ?: activeProvider.model) }
     var isKeyVisible by remember { mutableStateOf(false) }
     var autoSaveHistory by remember { mutableStateOf(vm.autoSave()) }
+    var temperature by remember { mutableStateOf(vm.generationTemperature) }
+    var maxTokens by remember { mutableStateOf(vm.generationMaxTokens) }
 
     var testStatus by remember { mutableStateOf<String?>(null) }
     var isTesting by remember { mutableStateOf(false) }
@@ -2491,6 +2493,46 @@ private fun SettingsScreen(vm: MochiViewModel) {
                 }
             )
         }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        // ===== Parameter Generasi AI =====
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Parameter Generasi AI", fontWeight = FontWeight.Bold)
+            Text(
+                "Berlaku untuk semua provider (Gemini, OpenAI, OpenRouter, lokal).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                "Temperature: ${String.format(java.util.Locale.US, "%.1f", temperature)} " +
+                        if (temperature <= 0.3f) "(konsisten/presisi)" else "(kreatif/ekspresif)",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Slider(
+                value = temperature,
+                onValueChange = {
+                    temperature = it
+                    vm.generationTemperature = it
+                },
+                valueRange = 0f..1.5f
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                "Maks token per chunk: $maxTokens",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Slider(
+                value = maxTokens.toFloat(),
+                onValueChange = {
+                    val v = (it.toInt() / 256) * 256
+                    maxTokens = v
+                    vm.generationMaxTokens = v
+                },
+                valueRange = 1024f..16384f
+            )
+        }
     }
 }
 
@@ -2502,8 +2544,8 @@ private fun DocumentationScreen(initialPage: Int = 0) {
             Icons.Default.Language,
             "• Editor Teks Langsung:\n" +
                     "  Salin dan tempelkan kalimat, paragraf, atau bab cerita langsung di menu 'Terjemahkan Teks'. Aplikasi menghitung karakter dan estimasi kata secara real-time.\n\n" +
-                    "• Dokumen Berukuran Besar (.txt):\n" +
-                    "  Gunakan menu 'Terjemahkan File' untuk memuat file teks (.txt) berkode UTF-8. MochiTL akan secara otomatis memecah file menjadi potongan teks (chunking ~4000 karakter) dan menerjemahkannya secara berurutan tanpa terpotong.\n\n" +
+                    "• Dokumen Berukuran Besar (.txt, .epub, .docx, .pdf):\n" +
+                    "  Gunakan menu 'Terjemahkan File' untuk memuat dokumen. MochiTL akan secara otomatis memecah file menjadi potongan teks (chunking di batas paragraf, ~4000 karakter), menerjemahkannya secara berurutan dengan percobaan ulang otomatis saat gagal, dan menyimpan hasil sebagian bila ada bagian yang tidak terjawab.\n\n" +
                     "• Kontrol Proses Real-time:\n" +
                     "  Saat penerjemahan berjalan, Anda dapat menekan tombol Jeda (Pause) untuk menghentikan sementara, Lanjutkan (Resume) untuk meneruskan, atau Batal (Cancel) kapan saja."
         ),

@@ -41,4 +41,14 @@ class AppStorage(context: Context) {
     var autoSaveHistory: Boolean
         get() = plain.getBoolean("auto_save_history", false)
         set(value) { plain.edit().putBoolean("auto_save_history", value).apply() }
+
+    /** Kreativitas model (0.0 konsisten .. 1.5 kreatif), dipakai semua provider. */
+    var temperature: Float
+        get() = plain.getFloat("temperature", 0.3f)
+        set(value) { plain.edit().putFloat("temperature", value).apply() }
+
+    /** Batas token output per permintaan/chunk. */
+    var maxTokens: Int
+        get() = plain.getInt("max_tokens", 8192)
+        set(value) { plain.edit().putInt("max_tokens", value).apply() }
 }

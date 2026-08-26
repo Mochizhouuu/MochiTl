@@ -90,6 +90,16 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         get() = storage.model(activeProvider.value.id)
         set(value) { if (value.isNullOrBlank()) storage.deleteModel(activeProvider.value.id) else storage.saveModel(activeProvider.value.id, value) }
 
+    /** Kreativitas model 0.0..1.5 — berlaku untuk semua provider. */
+    var generationTemperature: Float
+        get() = storage.temperature
+        set(value) { storage.temperature = value.coerceIn(0f, 1.5f) }
+
+    /** Batas token output per chunk. */
+    var generationMaxTokens: Int
+        get() = storage.maxTokens
+        set(value) { storage.maxTokens = value.coerceIn(256, 32768) }
+
     fun storageModelFor(providerId: String): String? = storage.model(providerId)
 
     fun setInput(value: String) { _state.value = _state.value.copy(input = value, error = null) }
@@ -219,7 +229,14 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         var lastError: Exception? = null
         repeat(MAX_ATTEMPTS) { attempt ->
             try {
-                return repository.translate(provider, apiKey, systemPrompt, chunk)
+                return repository.translate(
+                    provider,
+                    apiKey,
+                    systemPrompt,
+                    chunk,
+                    temperature = generationTemperature.toDouble(),
+                    maxTokens = generationMaxTokens
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
