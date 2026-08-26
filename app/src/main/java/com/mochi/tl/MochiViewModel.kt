@@ -4,13 +4,18 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
+import java.util.Collections
 import java.util.UUID
 
 /**
@@ -64,6 +69,32 @@ internal fun chunkByParagraphs(text: String, maxChars: Int = 4000): List<String>
 class MochiViewModel(app: Application) : AndroidViewModel(app) {
     private val storage = AppStorage(app)
     private val repository = TranslationRepository()
+
+    /**
+     * Seluruh I/O penyimpanan (baca awal + tulis) berjalan di sini — TIDAK
+     * pernah memblokir thread utama. StateFlow tetap dimutasi sinkron sebagai
+     * sumber kebenaran UI; Room hanya lapisan durabilitas.
+     */
+    private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Koleksi yang sudah diedit sejak proses start — hidrasi awal tidak boleh menimpanya. */
+    private val editedCollections: MutableSet<String> = Collections.newKeySet()
+
+    private fun persistAsync(vararg collections: String, block: suspend () -> Unit) {
+        collections.forEach { editedCollections.add(it) }
+        storageScope.launch { block() }
+    }
+
+    init {
+        // Hidrasi awal dari Room. Jika user sempat mengubah sesuatu sebelum
+        // baca selesai (nyaris mustahil, tapi aman), data lokal yang menang.
+        storageScope.launch {
+            if ("projects" !in editedCollections) projects.value = storage.projects()
+            if ("prompts" !in editedCollections) prompts.value = storage.prompts()
+            if ("history" !in editedCollections) history.value = storage.history()
+            if ("glossary" !in editedCollections) glossary.value = storage.glossary()
+        }
+    }
     private val _state = MutableStateFlow(TranslationState())
     val state: StateFlow<TranslationState> = _state.asStateFlow()
     private var job: Job? = null
@@ -189,7 +220,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 if (storage.autoSaveHistory && result.isNotBlank()) {
                     val updated = listOf(TranslationRecord(UUID.randomUUID().toString(), source.take(120), result, sourceLanguage, target, currentProvider.id)) + history.value
                     history.value = updated.take(100)
-                    storage.saveHistory(history.value)
+                    persistAsync("history") { storage.saveHistory(history.value) }
                 }
             } catch (e: CancellationException) {
                 // Pembatalan oleh user (cancel()) bukan error — jangan timpa
@@ -250,7 +281,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun savePrompt(prompt: PromptTemplate) {
         val updated = prompts.value.filterNot { it.id == prompt.id } + prompt
         prompts.value = updated
-        storage.savePrompts(updated)
+        persistAsync("prompts") { storage.savePrompts(updated) }
         if (activePrompt.value.id == prompt.id) {
             activePrompt.value = prompt
         }
@@ -258,14 +289,14 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun deletePrompt(id: String) {
         val updated = prompts.value.filterNot { it.id == id && !it.isBuiltIn }
         prompts.value = updated
-        storage.savePrompts(updated)
+        persistAsync("prompts") { storage.savePrompts(updated) }
         if (activePrompt.value.id == id) {
             activePrompt.value = updated.firstOrNull() ?: BuiltIns.defaultPrompt
         }
     }
     fun resetPromptsToDefault() {
         prompts.value = BuiltIns.prompts
-        storage.savePrompts(prompts.value)
+        persistAsync("prompts") { storage.savePrompts(prompts.value) }
         if (prompts.value.none { it.id == activePrompt.value.id }) {
             activePrompt.value = BuiltIns.defaultPrompt
         }
@@ -312,17 +343,17 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         BuiltIns.prompts.forEach { builtin -> current.putIfAbsent(builtin.id, builtin) }
         val newList = current.values.toList()
         prompts.value = newList
-        storage.savePrompts(newList)
+        persistAsync("prompts") { storage.savePrompts(newList) }
         importedCount
     }
 
     fun saveGlossaryItem(entry: GlossaryEntry) {
         glossary.value = (glossary.value.filterNot { it.id == entry.id } + entry)
-        storage.saveGlossary(glossary.value)
+        persistAsync("glossary") { storage.saveGlossary(glossary.value) }
     }
     fun deleteGlossaryItem(id: String) {
         glossary.value = glossary.value.filterNot { it.id == id }
-        storage.saveGlossary(glossary.value)
+        persistAsync("glossary") { storage.saveGlossary(glossary.value) }
     }
 
     fun exportGlossaryJson(): String {
@@ -347,31 +378,36 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         }
         val newList = current.values.toList()
         glossary.value = newList
-        storage.saveGlossary(newList)
+        persistAsync("glossary") { storage.saveGlossary(newList) }
         addedCount
     }
 
     fun saveProject(project: TranslationProject) {
         projects.value = (projects.value.filterNot { it.id == project.id } + project)
-        storage.saveProjects(projects.value)
+        persistAsync("projects") { storage.saveProjects(projects.value) }
     }
     fun deleteProject(id: String) {
         projects.value = projects.value.filterNot { it.id == id }
-        storage.saveProjects(projects.value)
+        persistAsync("projects") { storage.saveProjects(projects.value) }
         if (activeProject.value?.id == id) activeProject.value = null
     }
 
     fun deleteHistoryItem(id: String) {
         history.value = history.value.filterNot { it.id == id }
-        storage.saveHistory(history.value)
+        persistAsync("history") { storage.saveHistory(history.value) }
     }
     fun clearHistory() {
         history.value = emptyList()
-        storage.saveHistory(emptyList())
+        persistAsync("history") { storage.saveHistory(emptyList()) }
     }
 
     fun setAutoSave(value: Boolean) { storage.autoSaveHistory = value }
     fun autoSave(): Boolean = storage.autoSaveHistory
+
+    override fun onCleared() {
+        storageScope.cancel()
+        super.onCleared()
+    }
 
     private companion object {
         const val MAX_ATTEMPTS = 3
