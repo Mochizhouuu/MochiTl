@@ -1,9 +1,14 @@
 package com.mochi.tl
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.room.Room
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -23,17 +28,21 @@ import kotlinx.serialization.json.Json
  */
 class AppStorage(context: Context) {
     private val appContext = context.applicationContext
-    private val plain = context.getSharedPreferences("mochitl_preferences", Context.MODE_PRIVATE)
-    private val secure = runCatching {
-        EncryptedSharedPreferences.create(
-            context,
-            "mochitl_secure",
-            MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }.getOrElse { context.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE) }
+    private val plain: SharedPreferences = context.getSharedPreferences("mochitl_preferences", Context.MODE_PRIVATE)
+    private val secure: SharedPreferences = runCatching {
+        createEncryptedPrefs(context)
+    }.getOrElse {
+        runCatching {
+            context.deleteSharedPreferences("mochitl_secure")
+            createEncryptedPrefs(context)
+        }.getOrElse {
+            context.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE)
+        }
+    }
+
     val json = Json { ignoreUnknownKeys = true }
+
+    private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val db: MochiTlDatabase by lazy {
         Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
@@ -42,30 +51,43 @@ class AppStorage(context: Context) {
     }
 
     init {
-        migrateLegacyPrefsToRoom()
+        storageScope.launch {
+            migrateLegacyPrefsToRoom()
+        }
+    }
+
+    private fun createEncryptedPrefs(context: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            "mochitl_secure",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
     /** Sekali jalan: pindahkan koleksi JSON lama di prefs ke Room. */
-    private fun migrateLegacyPrefsToRoom() {
+    private suspend fun migrateLegacyPrefsToRoom() {
         if (plain.getBoolean("room_migrated", false)) return
-        runBlocking {
-            if (db.projectDao().getAll().isEmpty()) {
-                decodeLegacy<TranslationProject>("projects")?.let { db.projectDao().upsertAll(it) }
-            }
-            if (db.glossaryDao().getAll().isEmpty()) {
-                decodeLegacy<GlossaryEntry>("glossary")?.let { db.glossaryDao().upsertAll(it) }
-            }
-            if (db.historyDao().getAll().isEmpty()) {
-                decodeLegacy<TranslationRecord>("history")?.let { db.historyDao().upsertAll(it.take(100)) }
-            }
-            if (db.promptDao().getAll().isEmpty()) {
-                // Prompt lama sudah menyertakan built-ins; gabungkan dengan
-                // bawaan agar built-ins selalu ada meski data lama rusak.
-                val legacyPrompts = decodeLegacy<PromptTemplate>("prompts").orEmpty()
-                db.promptDao().upsertAll(
-                    (BuiltIns.prompts + legacyPrompts).associateBy { it.id }.values.toList()
-                )
-            }
+        if (db.projectDao().getAll().isEmpty()) {
+            decodeLegacy<TranslationProject>("projects")?.let { db.projectDao().upsertAll(it) }
+        }
+        if (db.glossaryDao().getAll().isEmpty()) {
+            decodeLegacy<GlossaryEntry>("glossary")?.let { db.glossaryDao().upsertAll(it) }
+        }
+        if (db.historyDao().getAll().isEmpty()) {
+            decodeLegacy<TranslationRecord>("history")?.let { db.historyDao().upsertAll(it.take(100)) }
+        }
+        if (db.promptDao().getAll().isEmpty()) {
+            // Prompt lama sudah menyertakan built-ins; gabungkan dengan
+            // bawaan agar built-ins selalu ada meski data lama rusak.
+            val legacyPrompts = decodeLegacy<PromptTemplate>("prompts").orEmpty()
+            db.promptDao().upsertAll(
+                (BuiltIns.prompts + legacyPrompts).associateBy { it.id }.values.toList()
+            )
         }
         // Key lama dibiarkan sebagai cadangan; penanda mencegah migrasi ulang.
         plain.edit().putBoolean("room_migrated", true).apply()
