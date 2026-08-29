@@ -509,10 +509,10 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Penerjemah Dokumen TXT", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Penerjemah Dokumen", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 Text(
-                    text = "Pilih file teks (.txt) untuk diterjemahkan secara otomatis per-chunk dengan context prompt & glossary aktif.",
+                    text = "Pilih dokumen (TXT, EPUB, DOCX, PDF) untuk diterjemahkan secara otomatis per-chunk dengan context prompt & glossary aktif.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -565,7 +565,17 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
         }
 
         Button(
-            onClick = { filePicker.launch(arrayOf("text/plain")) },
+            onClick = {
+                filePicker.launch(
+                    arrayOf(
+                        "text/plain",
+                        "application/epub+zip",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        "application/pdf",
+                        "*/*"
+                    )
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
@@ -573,7 +583,7 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
         ) {
             Icon(Icons.Default.FolderOpen, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text(if (fileName == null) "Buka File Teks (.txt)" else "File: $fileName", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (fileName == null) "Buka Dokumen (TXT, EPUB, DOCX, PDF)" else "File: $fileName", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
 
         if (fileText.isNotBlank()) {
