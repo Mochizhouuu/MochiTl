@@ -68,33 +68,33 @@ fun MochiAppTheme(
     content: @Composable () -> Unit
 ) {
     val lightColors = lightColorScheme(
-        primary = Color(0xFF6750A4),
+        primary = Color(0xFF386A36),
         onPrimary = Color.White,
-        primaryContainer = Color(0xFFEADDFF),
-        onPrimaryContainer = Color(0xFF21005D),
-        secondary = Color(0xFF625B71),
+        primaryContainer = Color(0xFFD3EED0),
+        onPrimaryContainer = Color(0xFF072107),
+        secondary = Color(0xFF52634F),
         onSecondary = Color.White,
-        secondaryContainer = Color(0xFFE8DEF8),
-        onSecondaryContainer = Color(0xFF1D192B),
-        background = Color(0xFFFBF8FD),
-        surface = Color(0xFFFBF8FD),
-        surfaceVariant = Color(0xFFE7E0EC),
-        onSurfaceVariant = Color(0xFF49454F)
+        secondaryContainer = Color(0xFFD5E8CE),
+        onSecondaryContainer = Color(0xFF101F10),
+        background = Color(0xFFF7FBF5),
+        surface = Color(0xFFF7FBF5),
+        surfaceVariant = Color(0xFFDEE5D9),
+        onSurfaceVariant = Color(0xFF424940)
     )
 
     val darkColors = darkColorScheme(
-        primary = Color(0xFFD0BCFF),
-        onPrimary = Color(0xFF381E72),
-        primaryContainer = Color(0xFF4F378B),
-        onPrimaryContainer = Color(0xFFEADDFF),
-        secondary = Color(0xFFCCC2DC),
-        onSecondary = Color(0xFF332D41),
-        secondaryContainer = Color(0xFF4A4458),
-        onSecondaryContainer = Color(0xFFE8DEF8),
-        background = Color(0xFF141218),
-        surface = Color(0xFF141218),
-        surfaceVariant = Color(0xFF49454F),
-        onSurfaceVariant = Color(0xFFCAC4D0)
+        primary = Color(0xFFA5D698),
+        onPrimary = Color(0xFF07390C),
+        primaryContainer = Color(0xFF205120),
+        onPrimaryContainer = Color(0xFFC1F3B3),
+        secondary = Color(0xFFB9CCB3),
+        onSecondary = Color(0xFF253423),
+        secondaryContainer = Color(0xFF3B4B38),
+        onSecondaryContainer = Color(0xFFD5E8CE),
+        background = Color(0xFF101410),
+        surface = Color(0xFF101410),
+        surfaceVariant = Color(0xFF424940),
+        onSurfaceVariant = Color(0xFFC2C9BD)
     )
 
     val colorScheme = if (darkTheme) darkColors else lightColors

@@ -144,7 +144,7 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                 Icon(Icons.Default.Description, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Terjemahkan Dokumen / File TXT",
+                    text = "Terjemahkan Dokumen",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
