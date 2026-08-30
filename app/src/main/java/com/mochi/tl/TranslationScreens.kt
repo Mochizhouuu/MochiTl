@@ -254,7 +254,7 @@ internal fun TextTranslationScreen(vm: MochiViewModel) {
                 val wordCount = if (state.input.isBlank()) 0 else state.input.trim().split("\\s+".toRegex()).size
 
                 Text(
-                    text = "Teks Sumber ($charCount kar / $wordCount kata)",
+                    text = "Sumber ($charCount kar / $wordCount kata)",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
@@ -375,7 +375,7 @@ internal fun TextTranslationScreen(vm: MochiViewModel) {
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Terjemahkan Teks", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("Terjemahkan", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             } else {
                 FilledTonalButton(
@@ -510,7 +510,7 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
                     Text("Penerjemah Dokumen", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 Text(
-                    text = "Pilih dokumen (TXT, EPUB, DOCX, PDF) untuk diterjemahkan secara otomatis per-chunk dengan context prompt & glossary aktif.",
+                    text = "Dukungan format TXT, EPUB, DOCX, & PDF.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -582,7 +582,7 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
         ) {
             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(if (fileName == null) "Buka Dokumen (TXT, EPUB, DOCX, PDF)" else "File: $fileName", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (fileName == null) "Pilih Dokumen" else "File: $fileName", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
 
         if (fileText.isNotBlank()) {
@@ -610,7 +610,7 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Proses Terjemahkan File", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text("Terjemahkan Dokumen", fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -664,7 +664,7 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Pratinjau Hasil Terjemahan Dokumen:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                    Text("Pratinjau Hasil:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                     Text(state.output.take(800) + if (state.output.length > 800) "\n..." else "", style = MaterialTheme.typography.bodyMedium)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Button(
@@ -679,7 +679,7 @@ internal fun FileTranslationScreen(vm: MochiViewModel) {
                     ) {
                         Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Simpan File Terjemahan Lengkap", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("Simpan File", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

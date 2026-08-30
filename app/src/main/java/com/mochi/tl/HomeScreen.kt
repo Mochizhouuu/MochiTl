@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
     val glossaryList by vm.glossary.collectAsState()
-    val isDark = isSystemInDarkTheme()
 
     Column(
         modifier = Modifier
@@ -58,44 +57,13 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Surface(
+                Image(
+                    painter = painterResource(R.drawable.mochitl_mascot),
+                    contentDescription = "MochiTL Mascot",
                     modifier = Modifier
-                        .then(
-                            if (isDark) {
-                                Modifier.shadow(
-                                    elevation = 12.dp,
-                                    shape = RoundedCornerShape(20.dp),
-                                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                    spotColor = MaterialTheme.colorScheme.primary
-                                )
-                            } else Modifier
-                        ),
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f) else Color.Transparent,
-                    tonalElevation = if (isDark) 4.dp else 0.dp
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .padding(if (isDark) 6.dp else 0.dp)
-                            .then(
-                                if (isDark) {
-                                    Modifier.border(
-                                        width = 1.dp,
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                        shape = RoundedCornerShape(16.dp)
-                                    )
-                                } else Modifier
-                            )
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.mochitl_mascot),
-                            contentDescription = "MochiTL Mascot",
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                        )
-                    }
-                }
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                )
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "MochiTL Workspace",
@@ -106,7 +74,7 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Aplikasi Penerjemah AI untuk Novel, Manga, Manhwa & File",
+                    text = "Penerjemah AI Novel, Manga, Manhwa & File",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
@@ -128,7 +96,7 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                 Icon(Icons.Default.Language, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Mulai Terjemahkan Teks",
+                    text = "Terjemahkan Teks",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
@@ -151,7 +119,7 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                 Icon(Icons.Default.Description, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Terjemahkan Dokumen",
+                    text = "Terjemahkan File",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
@@ -192,7 +160,7 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                 ) {
                     Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Settings AI", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("Pengaturan AI", fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
