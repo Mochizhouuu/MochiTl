@@ -34,6 +34,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -131,13 +133,44 @@ fun MochiApp(
                             .fillMaxWidth()
                             .padding(bottom = 16.dp)
                     ) {
-                        Image(
-                            painter = painterResource(R.drawable.mochitl_mascot),
-                            contentDescription = "MochiTL Mascot",
+                        Surface(
                             modifier = Modifier
-                                .size(52.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                        )
+                                .then(
+                                    if (isDarkTheme) {
+                                        Modifier.shadow(
+                                            elevation = 8.dp,
+                                            shape = RoundedCornerShape(14.dp),
+                                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                            spotColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else Modifier
+                                ),
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isDarkTheme) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f) else Color.Transparent,
+                            tonalElevation = if (isDarkTheme) 4.dp else 0.dp
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(if (isDarkTheme) 4.dp else 0.dp)
+                                    .then(
+                                        if (isDarkTheme) {
+                                            Modifier.border(
+                                                width = 1.dp,
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                        } else Modifier
+                                    )
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.mochitl_mascot),
+                                    contentDescription = "MochiTL Mascot",
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                )
+                            }
+                        }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
@@ -147,7 +180,7 @@ fun MochiApp(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "AI Translation Workspace • v1.0.0",
+                                text = "AI Translation Workspace",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -588,7 +621,7 @@ private fun PromptScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Panduan Menulis Prompt Custom",
+                        text = "Panduan Prompt Custom",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -608,7 +641,7 @@ private fun PromptScreen(
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            placeholder = { Text("Cari prompt (nama / aturan)...") },
+            placeholder = { Text("Cari prompt...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true
         )
@@ -861,7 +894,7 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            placeholder = { Text("Cari istilah glosarium (istilah / terjemahan / catatan)...") },
+            placeholder = { Text("Cari istilah...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
