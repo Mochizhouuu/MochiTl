@@ -85,16 +85,6 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         storageScope.launch { block() }
     }
 
-    init {
-        // Hidrasi awal dari Room. Jika user sempat mengubah sesuatu sebelum
-        // baca selesai (nyaris mustahil, tapi aman), data lokal yang menang.
-        storageScope.launch {
-            if ("projects" !in editedCollections) projects.value = storage.projects()
-            if ("prompts" !in editedCollections) prompts.value = storage.prompts()
-            if ("history" !in editedCollections) history.value = storage.history()
-            if ("glossary" !in editedCollections) glossary.value = storage.glossary()
-        }
-    }
     private val _state = MutableStateFlow(TranslationState())
     val state: StateFlow<TranslationState> = _state.asStateFlow()
     private var job: Job? = null
@@ -106,6 +96,8 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     val activeProvider = MutableStateFlow(BuiltIns.providers.first())
     val activeProject = MutableStateFlow<TranslationProject?>(null)
     val activePrompt = MutableStateFlow(BuiltIns.defaultPrompt)
+
+
 
     val availableModels = MutableStateFlow<List<String>>(emptyList())
 
