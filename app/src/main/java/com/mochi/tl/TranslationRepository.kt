@@ -3,14 +3,16 @@ package com.mochi.tl
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -26,7 +28,7 @@ import kotlinx.serialization.json.Json
     val systemInstruction: GeminiContent? = null,
     val generationConfig: GeminiGenerationConfig? = null
 )
-@Serializable private data class GeminiCandidate(val content: GeminiContent)
+@Serializable private data class GeminiCandidate(val content: GeminiContent? = null)
 @Serializable private data class GeminiResponse(val candidates: List<GeminiCandidate> = emptyList())
 
 @Serializable private data class OpenAiModelItem(val id: String)
@@ -42,6 +44,11 @@ class TranslationRepository {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val client = HttpClient(Android) {
         install(ContentNegotiation) { json(json) }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 60_000L
+            connectTimeoutMillis = 30_000L
+            socketTimeoutMillis = 60_000L
+        }
     }
 
     suspend fun translate(
@@ -70,7 +77,16 @@ class TranslationRepository {
             apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") }
             setBody(ChatRequest(config.model, listOf(ChatMessage("system", system), ChatMessage("user", text)), temperature, maxTokens))
         }
-        return response.body<ChatResponse>().choices.firstOrNull()?.message?.content?.trim().orEmpty()
+        if (response.status.value !in 200..299) {
+            val errBody = runCatching { response.bodyAsText() }.getOrDefault("")
+            throw IllegalStateException("API Error (${response.status.value}): ${errBody.take(200).ifBlank { response.status.description }}")
+        }
+        val chatResponse = response.body<ChatResponse>()
+        val result = chatResponse.choices.firstOrNull()?.message?.content?.trim().orEmpty()
+        if (result.isBlank()) {
+            throw IllegalStateException("Respon AI kosong atau tidak valid.")
+        }
+        return result
     }
 
     private suspend fun translateGemini(
@@ -93,14 +109,32 @@ class TranslationRepository {
                 generationConfig = GeminiGenerationConfig(temperature = temperature, maxOutputTokens = maxTokens)
             ))
         }
-        return response.body<GeminiResponse>().candidates.firstOrNull()?.content?.parts?.joinToString("") { it.text }?.trim().orEmpty()
+        if (response.status.value !in 200..299) {
+            val errBody = runCatching { response.bodyAsText() }.getOrDefault("")
+            throw IllegalStateException("Gemini API Error (${response.status.value}): ${errBody.take(200).ifBlank { response.status.description }}")
+        }
+        val geminiResponse = response.body<GeminiResponse>()
+        val result = geminiResponse.candidates.firstOrNull()?.content?.parts?.joinToString("") { it.text }?.trim().orEmpty()
+        if (result.isBlank()) {
+            throw IllegalStateException("Respon Gemini kosong atau terblokir filter keamanan.")
+        }
+        return result
     }
 
     suspend fun testConnection(config: ProviderConfig, apiKey: String?): Result<Unit> = runCatching {
-        if (config.id == "gemini") require(!apiKey.isNullOrBlank()) { "API key wajib untuk Gemini." }
-        else {
+        if (config.id == "gemini") {
+            val modelsResult = fetchModels(config, apiKey)
+            if (modelsResult.isFailure) {
+                throw modelsResult.exceptionOrNull() ?: IllegalStateException("Gagal terhubung ke Gemini API")
+            }
+        } else {
             val root = config.baseUrl.trimEnd('/').removeSuffix("/v1")
-            client.get("$root/v1/models") { apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") } }
+            val response = client.get("$root/v1/models") {
+                apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") }
+            }
+            if (response.status.value !in 200..299) {
+                throw IllegalStateException("Gagal terhubung (${response.status.value} ${response.status.description})")
+            }
         }
     }
 
@@ -109,9 +143,14 @@ class TranslationRepository {
         val modelList = when (config.id) {
             "gemini" -> {
                 require(!apiKey.isNullOrBlank()) { "API key Gemini belum diatur." }
-                val resp = client.get("${config.baseUrl.trimEnd('/')}/v1beta/models") {
+                val response = client.get("${config.baseUrl.trimEnd('/')}/v1beta/models") {
                     header("x-goog-api-key", apiKey)
-                }.body<GeminiModelsResponse>()
+                }
+                if (response.status.value !in 200..299) {
+                    val errBody = runCatching { response.bodyAsText() }.getOrDefault("")
+                    throw IllegalStateException("Gagal mengambil model (${response.status.value}): ${errBody.take(200).ifBlank { response.status.description }}")
+                }
+                val resp = response.body<GeminiModelsResponse>()
                 resp.models.map { it.name.removePrefix("models/") }.filter { it.contains("gemini", ignoreCase = true) }
             }
             "ollama" -> {
@@ -124,9 +163,14 @@ class TranslationRepository {
                 }
             }
             else -> {
-                val resp = client.get("$root/v1/models") {
+                val response = client.get("$root/v1/models") {
                     apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") }
-                }.body<OpenAiModelsResponse>()
+                }
+                if (response.status.value !in 200..299) {
+                    val errBody = runCatching { response.bodyAsText() }.getOrDefault("")
+                    throw IllegalStateException("Gagal mengambil model (${response.status.value}): ${errBody.take(200).ifBlank { response.status.description }}")
+                }
+                val resp = response.body<OpenAiModelsResponse>()
                 resp.data.map { it.id }
             }
         }
