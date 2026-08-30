@@ -51,8 +51,10 @@ class AppStorage(context: Context) {
     }
 
     init {
-        storageScope.launch {
-            migrateLegacyPrefsToRoom()
+        if (!plain.getBoolean("room_migrated", false)) {
+            runBlocking {
+                migrateLegacyPrefsToRoom()
+            }
         }
     }
 

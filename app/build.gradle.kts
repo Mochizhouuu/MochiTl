@@ -30,8 +30,8 @@ android {
         applicationId = "com.mochi.tl"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.0.0"
+        versionCode = 9
+        versionName = "1.0.1"
     }
 
     signingConfigs {
@@ -68,7 +68,7 @@ android {
 
     splits {
         abi {
-            isEnable = true
+            isEnable = false
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
             isUniversalApk = true
