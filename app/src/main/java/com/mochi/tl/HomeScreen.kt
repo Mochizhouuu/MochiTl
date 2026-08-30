@@ -3,6 +3,8 @@
 package com.mochi.tl
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,6 +38,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
     val glossaryList by vm.glossary.collectAsState()
+    val isDark = isSystemInDarkTheme()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -52,13 +58,44 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    painter = painterResource(R.drawable.mochitl_mascot),
-                    contentDescription = "MochiTL Mascot",
+                Surface(
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                )
+                        .then(
+                            if (isDark) {
+                                Modifier.shadow(
+                                    elevation = 12.dp,
+                                    shape = RoundedCornerShape(20.dp),
+                                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    spotColor = MaterialTheme.colorScheme.primary
+                                )
+                            } else Modifier
+                        ),
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f) else Color.Transparent,
+                    tonalElevation = if (isDark) 4.dp else 0.dp
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(if (isDark) 6.dp else 0.dp)
+                            .then(
+                                if (isDark) {
+                                    Modifier.border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                } else Modifier
+                            )
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.mochitl_mascot),
+                            contentDescription = "MochiTL Mascot",
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "MochiTL Workspace",
