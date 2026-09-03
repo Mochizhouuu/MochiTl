@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import java.util.UUID
@@ -97,8 +98,6 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     val activeProject = MutableStateFlow<TranslationProject?>(null)
     val activePrompt = MutableStateFlow(BuiltIns.defaultPrompt)
 
-
-
     val availableModels = MutableStateFlow<List<String>>(emptyList())
 
     var apiKey: String?
@@ -125,24 +124,34 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
 
     fun storageModelFor(providerId: String): String? = storage.model(providerId)
 
-    fun setInput(value: String) { _state.value = _state.value.copy(input = value, error = null) }
-    fun setOutput(value: String) { _state.value = _state.value.copy(output = value) }
+    fun setInput(value: String) { _state.update { it.copy(input = value, error = null) } }
+    fun setOutput(value: String) { _state.update { it.copy(output = value) } }
     fun selectProvider(provider: ProviderConfig) { activeProvider.value = provider }
     fun setModelForActiveProvider(model: String) {
         customModel = model
     }
 
+    /**
+     * Resolusi konfigurasi provider aktif yang memperhitungkan kustomisasi URL dan model.
+     */
+    fun resolveCurrentProvider(): ProviderConfig {
+        val prov = activeProvider.value
+        val customUrl = customBaseUrl
+        val modelToUse = customModel?.takeIf { it.isNotBlank() } ?: prov.model
+        var res = prov.copy(model = modelToUse)
+        if (!customUrl.isNullOrBlank()) res = res.copy(baseUrl = customUrl)
+        return res
+    }
+
     suspend fun fetchModelsForActiveProvider(): Result<List<String>> {
-        val currentProvider = activeProvider.value.let {
-            val customUrl = customBaseUrl
-            if (!customUrl.isNullOrBlank()) it.copy(baseUrl = customUrl) else it
-        }
+        val currentProvider = resolveCurrentProvider()
         val result = repository.fetchModels(currentProvider, apiKey)
         if (result.isSuccess) {
             availableModels.value = result.getOrDefault(emptyList())
         }
         return result
     }
+
     fun selectProject(project: TranslationProject?) {
         activeProject.value = project
         project?.let { proj ->
@@ -150,6 +159,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
             providers.value.find { it.id == proj.providerId }?.let { activeProvider.value = it }
         }
     }
+
     fun selectPrompt(prompt: PromptTemplate) { activePrompt.value = prompt }
 
     fun translate(
@@ -161,7 +171,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         job?.cancel()
         job = viewModelScope.launch {
-            _state.value = _state.value.copy(input = source, isTranslating = true, isPaused = false, error = null, progress = 0f)
+            _state.update { it.copy(input = source, isTranslating = true, isPaused = false, error = null, progress = 0f) }
             try {
                 val systemPrompt = PromptBuilder.buildSystemPrompt(
                     prompt = prompt,
@@ -170,19 +180,13 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                     glossaryList = glossary.value,
                     project = project
                 )
-                val currentProvider = activeProvider.value.let { prov ->
-                    val customUrl = customBaseUrl
-                    val modelToUse = customModel?.takeIf { it.isNotBlank() } ?: prov.model
-                    var res = prov.copy(model = modelToUse)
-                    if (!customUrl.isNullOrBlank()) res = res.copy(baseUrl = customUrl)
-                    res
-                }
+                val currentProvider = resolveCurrentProvider()
 
                 val chunks = chunkByParagraphs(source)
                 val results = MutableList(chunks.size) { "" }
 
                 chunks.forEachIndexed { index, chunk ->
-                    while (_state.value.isPaused) delay(200)
+                    while (_state.value.isPaused) delay(PAUSE_CHECK_INTERVAL_MS)
 
                     try {
                         results[index] = translateChunkWithRetry(
@@ -196,22 +200,31 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                         // Gagal setelah semua percobaan ulang: simpan hasil
                         // parsial agar kerja user tidak hilang, lalu laporkan.
                         val partial = results.filter { it.isNotBlank() }.joinToString("\n")
-                        _state.value = _state.value.copy(
-                            output = partial,
-                            isTranslating = false,
-                            error = "Gagal di bagian ${index + 1}/${chunks.size}: ${e.message ?: "terjemahan gagal"}. Hasil sebagian sudah disimpan."
-                        )
+                        _state.update {
+                            it.copy(
+                                output = partial,
+                                isTranslating = false,
+                                error = "Gagal di bagian ${index + 1}/${chunks.size}: ${e.message ?: "terjemahan gagal"}. Hasil sebagian sudah disimpan."
+                            )
+                        }
                         return@launch
                     }
 
-                    _state.value = _state.value.copy(progress = (index + 1).toFloat() / chunks.size)
+                    _state.update { it.copy(progress = (index + 1).toFloat() / chunks.size) }
                 }
 
                 val result = results.joinToString("\n")
-                _state.value = _state.value.copy(output = result, isTranslating = false, progress = 1f)
+                _state.update { it.copy(output = result, isTranslating = false, progress = 1f) }
                 if (storage.autoSaveHistory && result.isNotBlank()) {
-                    val updated = listOf(TranslationRecord(UUID.randomUUID().toString(), source.take(120), result, sourceLanguage, target, currentProvider.id)) + history.value
-                    history.value = updated.take(100)
+                    val record = TranslationRecord(
+                        UUID.randomUUID().toString(),
+                        source.take(MAX_HISTORY_SOURCE_PREVIEW_LENGTH),
+                        result,
+                        sourceLanguage,
+                        target,
+                        currentProvider.id
+                    )
+                    history.update { current -> (listOf(record) + current).take(MAX_HISTORY_ITEMS) }
                     persistAsync("history") { storage.saveHistory(history.value) }
                 }
             } catch (e: CancellationException) {
@@ -219,25 +232,22 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 // pesan state dengan teks exception.
                 throw e
             } catch (e: Exception) {
-                _state.value = _state.value.copy(isTranslating = false, error = e.message ?: "Terjemahan gagal")
+                _state.update { it.copy(isTranslating = false, error = e.message ?: "Terjemahan gagal") }
             }
         }
     }
 
     suspend fun testConnection(): Result<Unit> {
-        val currentProvider = activeProvider.value.let { prov ->
-            val customUrl = customBaseUrl
-            val modelToUse = customModel?.takeIf { it.isNotBlank() } ?: prov.model
-            var res = prov.copy(model = modelToUse)
-            if (!customUrl.isNullOrBlank()) res = res.copy(baseUrl = customUrl)
-            res
-        }
+        val currentProvider = resolveCurrentProvider()
         return repository.testConnection(currentProvider, apiKey)
     }
 
-    fun pause() { _state.value = _state.value.copy(isPaused = true) }
-    fun resume() { _state.value = _state.value.copy(isPaused = false) }
-    fun cancel() { job?.cancel(); _state.value = _state.value.copy(isTranslating = false, isPaused = false, progress = 0f) }
+    fun pause() { _state.update { it.copy(isPaused = true) } }
+    fun resume() { _state.update { it.copy(isPaused = false) } }
+    fun cancel() {
+        job?.cancel()
+        _state.update { it.copy(isTranslating = false, isPaused = false, progress = 0f) }
+    }
 
     /**
      * Menerjemahkan satu chunk dengan percobaan ulang otomatis (maks
@@ -278,6 +288,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
             activePrompt.value = prompt
         }
     }
+
     fun deletePrompt(id: String) {
         val updated = prompts.value.filterNot { it.id == id && !it.isBuiltIn }
         prompts.value = updated
@@ -286,6 +297,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
             activePrompt.value = updated.firstOrNull() ?: BuiltIns.defaultPrompt
         }
     }
+
     fun resetPromptsToDefault() {
         prompts.value = BuiltIns.prompts
         persistAsync("prompts") { storage.savePrompts(prompts.value) }
@@ -340,11 +352,12 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun saveGlossaryItem(entry: GlossaryEntry) {
-        glossary.value = (glossary.value.filterNot { it.id == entry.id } + entry)
+        glossary.update { current -> current.filterNot { it.id == entry.id } + entry }
         persistAsync("glossary") { storage.saveGlossary(glossary.value) }
     }
+
     fun deleteGlossaryItem(id: String) {
-        glossary.value = glossary.value.filterNot { it.id == id }
+        glossary.update { current -> current.filterNot { it.id == id } }
         persistAsync("glossary") { storage.saveGlossary(glossary.value) }
     }
 
@@ -358,7 +371,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         var addedCount = 0
         for (item in importedList) {
             val validItem = item.copy(
-                id = if (item.id.isBlank()) UUID.randomUUID().toString() else item.id,
+                id = item.id.ifBlank { UUID.randomUUID().toString() },
                 source = item.source.trim(),
                 target = item.target.trim(),
                 note = item.note.trim()
@@ -375,19 +388,21 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun saveProject(project: TranslationProject) {
-        projects.value = (projects.value.filterNot { it.id == project.id } + project)
+        projects.update { current -> current.filterNot { it.id == project.id } + project }
         persistAsync("projects") { storage.saveProjects(projects.value) }
     }
+
     fun deleteProject(id: String) {
-        projects.value = projects.value.filterNot { it.id == id }
+        projects.update { current -> current.filterNot { it.id == id } }
         persistAsync("projects") { storage.saveProjects(projects.value) }
         if (activeProject.value?.id == id) activeProject.value = null
     }
 
     fun deleteHistoryItem(id: String) {
-        history.value = history.value.filterNot { it.id == id }
+        history.update { current -> current.filterNot { it.id == id } }
         persistAsync("history") { storage.saveHistory(history.value) }
     }
+
     fun clearHistory() {
         history.value = emptyList()
         persistAsync("history") { storage.saveHistory(emptyList()) }
@@ -404,5 +419,8 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     private companion object {
         const val MAX_ATTEMPTS = 3
         const val RETRY_BACKOFF_MS = 1500L
+        const val PAUSE_CHECK_INTERVAL_MS = 200L
+        const val MAX_HISTORY_SOURCE_PREVIEW_LENGTH = 120
+        const val MAX_HISTORY_ITEMS = 100
     }
 }
