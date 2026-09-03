@@ -67,7 +67,7 @@ object FileParser {
     // ===== TXT =====
 
     private fun txtText(input: InputStream): String =
-        BufferedReader(InputStreamReader(input, Charsets.UTF_8)).readText()
+        BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use { it.readText() }
 
     // ===== ZIP helpers =====
 
@@ -80,7 +80,10 @@ object FileParser {
         ZipInputStream(ByteArrayInputStream(data)).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
-                onEntry(entry, zip)?.let { return it }
+                val result = onEntry(entry, zip)
+                if (result != null) {
+                    return result
+                }
                 entry = zip.nextEntry
             }
         }
