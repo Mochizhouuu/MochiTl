@@ -77,7 +77,15 @@ object BuiltIns {
     val defaultPrompt = PromptTemplate(
         "builtin_default",
         "Umum (General)",
-        "Gunakan gaya bahasa yang alami, akurat, dan mengalir sesuai konteks.",
+        """
+| Aturan Gaya Terjemahan Umum
+|=============================
+| 1. Gunakan gaya bahasa yang alami, akurat, dan mengalir sesuai konteks.
+| 2. Pertahankan nada dan register teks asli (formal/santai).
+| 3. Jangan terjemahkan nama diri — romanisasi sesuai bahasa aslinya.
+| 4. Adaptasi idiom dan peribahasa ke padanan {target} yang natural.
+| 5. Jika ada istilah yang tidak memiliki padanan langsung, pertahankan istilah asli dengan penjelasan singkat pada kemunculan pertama.
+        """.trimIndent(),
         "custom",
         "Penerjemahan umum yang akurat dan terstruktur.",
         true
@@ -87,34 +95,76 @@ object BuiltIns {
         PromptTemplate(
             "builtin_novel",
             "Novel & Fiction",
-            "Gaya penulisan novel fiksi. Pertahankan nada emosional, narasi ekspresif, nuansa percakapan tokoh, dan konsistensi panggilan/honorifik.",
-            "novel",
-            "Khusus novel, light novel, dan fiksi naratif.",
-            true
+            """
+| Aturan Gaya Novel & Fiksi
+|===========================
+| 1. Jaga voice naratif — setiap tokoh harus memiliki "suara" yang konsisten.
+| 2. Dialog: buat natural seperti percakapan asli, hindari terjemahan kaku.
+| 3. Pertahankan honorifik Jepang/Korea (-san, -kun, -sama, oppa, unnie, dll).
+| 4. Onomatopoeia: gunakan padanan {target} jika ada, kalau tidak deskripsikan dalam teks.
+| 5. Monolog internal: sesuaikan konvensi narasi {target} (e.g., miring untuk pikiran).
+| 6. Judul bab, bagian, dan header tetap dalam bahasa aslinya kecuali sudah ada versi {target} yang mapan.
+| 7. Untuk light novel: pertahankan nuansa "terjemahan" yang umum di komunitas fiksi terjemah {target}.
+| 8. Konsistensi: istilah yang sama harus diterjemahkan sama di seluruh teks.
+        """.trimIndent(),
+        "novel",
+        "Khusus novel, light novel, dan fiksi naratif.",
+        true
         ),
         PromptTemplate(
             "builtin_comic",
             "Komik / Manga / Webtoon",
-            "Gaya penerjemahan komik/manga/webtoon. Gunakan kalimat ringkas, komunikatif, dan santai yang cocok untuk balon kata percakapan.",
-            "comic",
-            "Khusus percakapan komik, manga, manhwa, dan webtoon.",
-            true
+            """
+| Aturan Gaya Komik / Manga / Webtoon
+|=====================================
+| 1. Kalimat harus RINGKAS dan KOMUNIKATIF — sesuai ruang balon kata.
+| 2. Prioritaskan dampak visual: kalimat pendek untuk momen dramatis.
+| 3. Honorifik dan sapaan TETAP (san, kun, sama, oppa, unnie, etc).
+| 4. Narasi kotak: gunakan voice yang konsisten berbeda dari dialog tokoh.
+| 5. Sound effect (SFX): lokalisi ke {target} jika natural, otherwise pertahankan asli.
+| 6. Webtoon vertikal: perhatikan flow scroll — hindari kalimat yang terlalu panjang per panel.
+| 7. Slang & bahasa gaul: adaptasi ke budaya {target} tanpa menghilangkan karakter tokoh.
+| 8. Jangan-translate nama jurus/skill ke {target} — gunakan romanisasi/terjemahan Inggris sesuai konvensi.
+        """.trimIndent(),
+        "comic",
+        "Khusus percakapan komik, manga, manhwa, dan webtoon.",
+        true
         ),
         PromptTemplate(
             "builtin_academic",
             "Dokumen & Akademik",
-            "Gaya bahasa formal, lugas, dan akademis. Gunakan istilah teknis yang baku dan tepat.",
-            "academic",
-            "Khusus jurnal, artikel, dan dokumen teknis.",
-            true
+            """
+| Aturan Gaya Dokumen & Akademik
+|================================
+| 1. Gunakan bahasa {target} formal, lugas, dan akademis.
+| 2. Istilah teknis: gunakan terminologi baku {target} yang telah mapan.
+| 3. Jika tidak ada padanan baku, pertahankan istilah Inggris dalam *miring*.
+| 4. Pertahankan format sitasi, footnote, dan referensi persis seperti aslinya.
+| 5. Angka dan satuan: ikuti konvensi {target} (koma desimal, satuan metrik).
+| 6. Janganparafrase isi akademik — terjemahkan seakurat mungkin tanpa menambah/mengurangi makna.
+| 7. Judul jurnal, nama konferensi, dan nama institusi tetap dalam bahasa aslinya.
+        """.trimIndent(),
+        "academic",
+        "Khusus jurnal, artikel, dan dokumen teknis.",
+        true
         ),
         PromptTemplate(
             "builtin_ocr",
             "Pembersih Teks OCR",
-            "Perbaiki hasil scan/OCR yang berantakan (kata terputus atau salah baca) dan rapikan tata letaknya tanpa mengubah isi cerita.",
-            "ocr_cleanup",
-            "Merapikan hasil scan/OCR yang berantakan.",
-            true
+            """
+| Aturan Pembersihan OCR
+|========================
+| 1. PERBAIKI kesalahan OCR: kata terputus, huruf salah baca, spasi berlebih.
+| 2. JANGAN ubah isi cerita, dialog, atau makna — hanya rapikan bentuk teks.
+| 3. Pulihkan paragraph break yang hilang akibat scan.
+| 4. Jika karakter tidak terbaca sama sekali, ganti dengan [?].
+| 5. Pertahankan semua nama tokoh, tempat, dan istilah khusus — jangan "diperbaiki" ke ejaan lain.
+| 6. Rapikan punctuation yang berantakan (titik koma, tanda kutip, dll).
+| 7. Output tetap dalam bahasa sumber — ini adalah tahap pembersihan sebelum terjemahan.
+        """.trimIndent(),
+        "ocr_cleanup",
+        "Merapikan hasil scan/OCR yang berantakan.",
+        true
         )
     )
     val providers = listOf(
