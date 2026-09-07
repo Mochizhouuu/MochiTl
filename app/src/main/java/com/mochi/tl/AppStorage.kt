@@ -17,41 +17,43 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * Penyimpanan aplikasi.
- *
- * - Kredensial & pengaturan sederhana → EncryptedSharedPreferences / SharedPreferences.
- * - Koleksi (projects, prompts, glossary, history) → Room database.
- *
- * Semua pembacaan koleksi dilakukan secara asinkron agar tidak memblokir
- * thread utama saat aplikasi dibuka.
+ * Penyimpanan aplikasi — semua inisialisasi berat (EncryptedPrefs, Room DB)
+ * dilakukan secara lazy/asinkron agar tidak memblokir main thread saat startup.
  */
 class AppStorage(context: Context) {
     private val appContext = context.applicationContext
     private val plain: SharedPreferences = context.getSharedPreferences("mochitl_preferences", Context.MODE_PRIVATE)
-    private val secure: SharedPreferences = runCatching {
-        createEncryptedPrefs(context)
-    }.getOrElse {
-        runCatching {
-            context.deleteSharedPreferences("mochitl_secure")
-            createEncryptedPrefs(context)
-        }.getOrElse {
-            context.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE)
-        }
-    }
 
     val json = Json { ignoreUnknownKeys = true }
 
     private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val db: MochiTlDatabase by lazy {
-        Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
-            .allowMainThreadQueries()
-            .build()
-    }
+    /** Encrypted prefs dibuat lazy — hanya saat dibutuhkan (first access). */
+    private var secureRef: SharedPreferences? = null
+    private fun getSecure(): SharedPreferences = secureRef ?: runCatching {
+        createEncryptedPrefs(appContext)
+    }.getOrElse {
+        runCatching {
+            appContext.deleteSharedPreferences("mochitl_secure")
+            createEncryptedPrefs(appContext)
+        }.getOrElse {
+            appContext.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE)
+        }
+    }.also { secureRef = it }
+
+    /** Database dibuat lazy — baru diakses saat collection flow dipanggil. */
+    private var dbRef: MochiTlDatabase? = null
+    private val db: MochiTlDatabase
+        get() = dbRef ?: run {
+            Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
+                .allowMainThreadQueries()
+                .build()
+        }.also { dbRef = it }
 
     init {
-        if (!plain.getBoolean("room_migrated", false)) {
-            runBlocking {
+        // Migration dilakukan sekali di background, bukan di main thread.
+        storageScope.launch {
+            if (!plain.getBoolean("room_migrated", false)) {
                 migrateLegacyPrefsToRoom()
             }
         }
@@ -96,13 +98,22 @@ class AppStorage(context: Context) {
         }
 
     // ===== Kredensial & pengaturan provider =====
+    // Semua akses ke secure prefs tetap async — UI tidak menunggu.
 
-    fun saveApiKey(providerId: String, value: String) = secure.edit().putString("api_key_$providerId", value).apply()
-    fun apiKey(providerId: String): String? = secure.getString("api_key_$providerId", null)
-    fun deleteApiKey(providerId: String) = secure.edit().remove("api_key_$providerId").apply()
-    fun saveBaseUrl(providerId: String, value: String) = secure.edit().putString("base_url_$providerId", value).apply()
-    fun baseUrl(providerId: String): String? = secure.getString("base_url_$providerId", null)
-    fun deleteBaseUrl(providerId: String) = secure.edit().remove("base_url_$providerId").apply()
+    fun saveApiKey(providerId: String, value: String) {
+        getSecure().edit().putString("api_key_$providerId", value).apply()
+    }
+    fun apiKey(providerId: String): String? = getSecure().getString("api_key_$providerId", null)
+    fun deleteApiKey(providerId: String) {
+        getSecure().edit().remove("api_key_$providerId").apply()
+    }
+    fun saveBaseUrl(providerId: String, value: String) {
+        getSecure().edit().putString("base_url_$providerId", value).apply()
+    }
+    fun baseUrl(providerId: String): String? = getSecure().getString("base_url_$providerId", null)
+    fun deleteBaseUrl(providerId: String) {
+        getSecure().edit().remove("base_url_$providerId").apply()
+    }
 
     fun saveModel(providerId: String, value: String) = plain.edit().putString("model_$providerId", value).apply()
     fun model(providerId: String): String? = plain.getString("model_$providerId", null)

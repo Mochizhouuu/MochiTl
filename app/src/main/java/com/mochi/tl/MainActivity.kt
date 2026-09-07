@@ -24,7 +24,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 import android.content.ClipData
@@ -55,9 +54,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             var isDarkTheme by remember { mutableStateOf(false) }
             MochiAppTheme(darkTheme = isDarkTheme) {
-                // Muat data dari storage secara asinkron setelah UI pertama kali render.
+                // Muat data seketika setelah frame pertama tampil — tanpa delay.
                 LaunchedEffect(Unit) {
-                    delay(50L) // tunggu satu frame agar UI terlihat lebih cepat
                     vm.loadInitialData()
                 }
                 MochiApp(vm, isDarkTheme = isDarkTheme, onToggleTheme = { isDarkTheme = !isDarkTheme })
