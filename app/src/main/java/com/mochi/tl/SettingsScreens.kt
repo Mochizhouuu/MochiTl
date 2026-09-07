@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -553,7 +554,7 @@ private fun ProviderSelectorCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = if (isSelected) CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)) else CardDefaults.outlinedCardColors(),
-        border = if (isSelected) CardDefaults.outlinedCardBorderColors(color = MaterialTheme.colorScheme.primary) else null
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(
             modifier = Modifier
@@ -572,8 +573,7 @@ private fun ProviderSelectorCard(
             if (!provider.requiresApiKey) {
                 SuggestionChip(
                     onClick = {},
-                    label = { Text(" Lokal", fontSize = 10.sp) },
-                    colors = ChipDefaults.chipColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    label = { Text(" Lokal", fontSize = 10.sp) }
                 )
             }
         }

@@ -27,6 +27,26 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.border
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
+
 class MainActivity : ComponentActivity() {
     private val vm: MochiViewModel by viewModels()
 
@@ -312,6 +332,652 @@ fun MochiApp(
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun ProjectsScreen(vm: MochiViewModel) {
+    val projects by vm.projects.collectAsState()
+    val activeProject by vm.activeProject.collectAsState()
+    val prompts by vm.prompts.collectAsState()
+    val providers by vm.providers.collectAsState()
+    val glossaryList by vm.glossary.collectAsState()
+
+    var showDialog by remember { mutableStateOf(false) }
+    var editingProject by remember { mutableStateOf<TranslationProject?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Daftar Proyek",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = { editingProject = null; showDialog = true },
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Tambah Proyek", fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (projects.isEmpty()) {
+                item {
+                    Text("Belum ada proyek dibuat. Klik 'Tambah Proyek' untuk membuat baru.", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
+            items(projects) { proj ->
+                val isActive = activeProject?.id == proj.id
+                val promptName = prompts.find { it.id == proj.promptTemplateId }?.name ?: "Default Prompt"
+                val providerName = providers.find { it.id == proj.providerId }?.name ?: proj.providerId
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = if (isActive) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = proj.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (isActive) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                SuggestionChip(onClick = {}, label = { Text("AKTIF", fontWeight = FontWeight.Bold) })
+                            }
+                        }
+
+                        if (proj.description.isNotBlank()) {
+                            Text(proj.description, style = MaterialTheme.typography.bodyMedium)
+                        }
+
+                        val glossaryInfo = if (proj.glossaryIds.isEmpty()) "Semua (${glossaryList.size})" else "${proj.glossaryIds.size} terikat"
+                        Text("Prompt: $promptName • Provider: $providerName • Target: ${proj.targetLanguage} • Glosarium: $glossaryInfo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (!isActive) {
+                                FilledTonalButton(
+                                    onClick = { vm.selectProject(proj) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) { Text("Aktifkan Proyek") }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { vm.selectProject(null) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) { Text("Nonaktifkan") }
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(onClick = { editingProject = proj; showDialog = true }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit Proyek")
+                                }
+                                IconButton(onClick = { vm.deleteProject(proj.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Hapus Proyek", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        ProjectEditDialog(
+            project = editingProject,
+            prompts = prompts,
+            providers = providers,
+            glossaryList = glossaryList,
+            onDismiss = { showDialog = false },
+            onSave = { newProj ->
+                vm.saveProject(newProj)
+                showDialog = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+
+
+@Composable
+private fun PromptScreen(
+    vm: MochiViewModel,
+    onNavigateToDocumentation: (Int) -> Unit
+) {
+    val prompts by vm.prompts.collectAsState()
+    val context = LocalContext.current
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editingPrompt by remember { mutableStateOf<PromptTemplate?>(null) }
+    var viewingSamplePrompt by remember { mutableStateOf<PromptTemplate?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredPrompts = remember(prompts, searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) prompts else prompts.filter {
+            it.name.contains(q, true) || it.description.contains(q, true) || it.content.contains(q, true)
+        }
+    }
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { destinationUri ->
+            runCatching {
+                val json = vm.exportPromptsJson()
+                context.contentResolver.openOutputStream(destinationUri)?.use { out ->
+                    out.write(json.toByteArray())
+                }
+                Toast.makeText(context, "Prompt berhasil diekspor", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Gagal mengekspor: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { sourceUri ->
+            runCatching {
+                val content = context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                    input.bufferedReader().readText()
+                }.orEmpty()
+                val result = vm.importPromptsJson(content)
+                if (result.isSuccess) {
+                    Toast.makeText(context, "Berhasil mengimpor ${result.getOrDefault(0)} prompt", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, "Gagal mengimpor: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }.onFailure {
+                Toast.makeText(context, "Gagal membaca file: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Pengelola Prompt",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick = { vm.resetPromptsToDefault() },
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text("Reset")
+                }
+                Button(
+                    onClick = { editingPrompt = null; showEditDialog = true },
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Tambah", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        // Compact Banner to navigate to Documentation
+        OutlinedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            onClick = { onNavigateToDocumentation(3) }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Panduan Prompt Custom",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                TextButton(
+                    onClick = { onNavigateToDocumentation(3) },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("Lihat Panduan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Pencarian & cadangan prompt
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            placeholder = { Text("Cari prompt...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { exportLauncher.launch("prompt_mochitl.json") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Ekspor JSON", fontSize = 13.sp)
+            }
+
+            OutlinedButton(
+                onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Impor JSON", fontSize = 13.sp)
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (filteredPrompts.isEmpty()) {
+                item {
+                    Text(
+                        if (searchQuery.isBlank()) "Belum ada prompt. Tambahkan atau tekan Reset untuk memulai."
+                        else "Tidak ada prompt yang cocok dengan pencarian.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            items(filteredPrompts) { p ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = p.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            SuggestionChip(
+                                onClick = {},
+                                label = { Text(if (p.isBuiltIn) "Built-in" else "Kustom", fontWeight = FontWeight.Medium) }
+                            )
+                        }
+
+                        Text(p.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text(p.content, style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { viewingSamplePrompt = p },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Lihat Detail Template", fontSize = 12.sp)
+                            }
+
+                            if (!p.isBuiltIn) {
+                                Row {
+                                    IconButton(onClick = { vm.duplicatePrompt(p.id) }) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "Duplikat Prompt")
+                                    }
+                                    IconButton(onClick = { editingPrompt = p; showEditDialog = true }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit Prompt")
+                                    }
+                                    IconButton(onClick = { vm.deletePrompt(p.id) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Hapus Prompt", tint = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            } else {
+                                // Built-in tidak bisa diedit/hapus, tapi bisa diduplikat
+                                // menjadi salinan kustom.
+                                IconButton(onClick = { vm.duplicatePrompt(p.id) }) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Duplikat sebagai kustom")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (viewingSamplePrompt != null) {
+        PromptSampleViewerDialog(
+            prompt = viewingSamplePrompt!!,
+            onDismiss = { viewingSamplePrompt = null }
+        )
+    }
+
+    if (showEditDialog) {
+        PromptEditDialog(
+            prompt = editingPrompt,
+            onDismiss = { showEditDialog = false },
+            onNavigateToDocumentation = onNavigateToDocumentation,
+            onSave = { newP ->
+                vm.savePrompt(newP)
+                showEditDialog = false
+            }
+        )
+    }
+}
+
+
+
+
+@Composable
+private fun GlossaryScreen(vm: MochiViewModel) {
+    val glossaryList by vm.glossary.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var showDialog by remember { mutableStateOf(false) }
+    var editingEntry by remember { mutableStateOf<GlossaryEntry?>(null) }
+    val context = LocalContext.current
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { destinationUri ->
+            runCatching {
+                val json = vm.exportGlossaryJson()
+                context.contentResolver.openOutputStream(destinationUri)?.use { out ->
+                    out.write(json.toByteArray())
+                }
+                Toast.makeText(context, "Glosarium berhasil diekspor", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Gagal mengekspor: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { sourceUri ->
+            runCatching {
+                val content = context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                    input.bufferedReader().readText()
+                }.orEmpty()
+                val result = vm.importGlossaryJson(content)
+                if (result.isSuccess) {
+                    val count = result.getOrDefault(0)
+                    Toast.makeText(context, "Berhasil mengimpor $count istilah glosarium", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(context, "Gagal mengimpor: ${result.exceptionOrNull()?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }.onFailure {
+                Toast.makeText(context, "Gagal membaca file: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val filtered = remember(glossaryList, searchQuery) {
+        val q = searchQuery.trim()
+        glossaryList
+            .filter {
+                q.isEmpty() || it.source.contains(q, true) ||
+                        it.target.contains(q, true) || it.note.contains(q, true)
+            }
+            .sortedWith(compareBy({ it.source.lowercase() }, { it.target.lowercase() }))
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Glosarium Istilah",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = { editingEntry = null; showDialog = true },
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Tambah Istilah", fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { exportLauncher.launch("glosarium_mochitl.json") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Ekspor JSON", fontSize = 13.sp)
+            }
+
+            OutlinedButton(
+                onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Impor JSON", fontSize = 13.sp)
+            }
+        }
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            placeholder = { Text("Cari istilah...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Default.Close, contentDescription = "Bersihkan pencarian")
+                    }
+                }
+            },
+            singleLine = true
+        )
+
+        Text(
+            text = if (searchQuery.isBlank()) "${glossaryList.size} istilah • diurutkan abjad"
+            else "${filtered.size} dari ${glossaryList.size} istilah",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (filtered.isEmpty()) {
+                item {
+                    Text(
+                        if (glossaryList.isEmpty()) "Belum ada istilah glosarium. Tambahkan istilah nama karakter, jurus, atau tempat."
+                        else "Tidak ada istilah yang cocok dengan \"$searchQuery\".",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+
+            items(filtered) { entry ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = entry.source,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                Text(" ➔ ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = entry.target,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                            }
+                            if (entry.note.isNotBlank()) {
+                                Text(
+                                    text = "Catatan: ${entry.note}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Row {
+                            IconButton(onClick = { editingEntry = entry; showDialog = true }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Istilah")
+                            }
+                            IconButton(onClick = { vm.deleteGlossaryItem(entry.id) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Hapus Istilah", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        GlossaryEditDialog(
+            entry = editingEntry,
+            onDismiss = { showDialog = false },
+            onSave = { newEntry ->
+                vm.saveGlossaryItem(newEntry)
+                showDialog = false
+            }
+        )
     }
 }
 
