@@ -544,7 +544,6 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-@Composable
 private fun ProviderSelectorCard(
     provider: ProviderConfig,
     isSelected: Boolean,
