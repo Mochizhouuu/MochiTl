@@ -544,38 +544,55 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
+@Composable
 private fun ProviderSelectorCard(
     provider: ProviderConfig,
     isSelected: Boolean,
     currentModel: String,
     onClick: () -> Unit
 ) {
-    OutlinedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = if (isSelected) CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)) else CardDefaults.outlinedCardColors(),
-        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+    if (isSelected) {
+        OutlinedCard(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
         ) {
-            RadioButton(selected = isSelected, onClick = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(provider.name, fontWeight = FontWeight.Bold)
-                if (isSelected) {
-                    Text("Model: $currentModel • ${provider.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            if (!provider.requiresApiKey) {
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(" Lokal", fontSize = 10.sp) }
-                )
-            }
+            ProviderCardContent(provider, currentModel, true)
+        }
+    } else {
+        OutlinedCard(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.outlinedCardColors()
+        ) {
+            ProviderCardContent(provider, currentModel, false)
         }
     }
 }
+
+@Composable
+private fun ProviderCardContent(provider: ProviderConfig, currentModel: String, isSelected: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = isSelected, onClick = null)
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(provider.name, fontWeight = FontWeight.Bold)
+            if (isSelected) {
+                Text("Model: $currentModel • ${provider.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (!provider.requiresApiKey) {
+            SuggestionChip(
+                onClick = {},
+                label = { Text(" Lokal", fontSize = 10.sp) }
+            )
+        }
+    }
+}
+
