@@ -6,6 +6,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +44,7 @@ internal fun HistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -62,14 +63,13 @@ internal fun HistoryScreen(
             )
             if (history.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(8.dp))
-                OutlinedButton(
+                TextButton(
                     onClick = { vm.clearHistory() },
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Bersihkan")
+                    Text("Hapus Semua", fontSize = 13.sp)
                 }
             }
         }
@@ -80,69 +80,116 @@ internal fun HistoryScreen(
         ) {
             if (history.isEmpty()) {
                 item {
-                    Text("Belum ada riwayat terjemahan tersimpan.", style = MaterialTheme.typography.bodyMedium)
+                    EmptyStateBox(icon = Icons.Default.History, message = "Belum ada riwayat terjemahan tersimpan.")
                 }
             }
 
             items(history) { record ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                HistoryCard(record = record, onSelect = onSelectHistoryItem, onDelete = { vm.deleteHistoryItem(record.id) }, onCopy = {
+                    clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", record.translatedText))
+                    Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
+                })
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryCard(
+    record: TranslationRecord,
+    onSelect: (String) -> Unit,
+    onDelete: () -> Unit,
+    onCopy: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Source preview
+            Text(
+                text = "📝 Sumber",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = record.sourcePreview,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            // Translated text
+            Text(
+                text = "✅ Hasil Terjemahan",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = record.translatedText,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Text(
+                text = "Provider: ${record.providerId}  •  Target: ${record.targetLanguage}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                FilledTonalButton(
+                    onClick = { onSelect(record.translatedText) },
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = record.sourcePreview,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-                        Text(
-                            text = record.translatedText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Provider: ${record.providerId} • Target: ${record.targetLanguage}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            FilledTonalButton(
-                                onClick = { onSelectHistoryItem(record.translatedText) },
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Buka di Editor")
-                            }
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                IconButton(
-                                    onClick = {
-                                        clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", record.translatedText))
-                                        Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
-                                    }
-                                ) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Salin")
-                                }
-                                IconButton(onClick = { vm.deleteHistoryItem(record.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        }
-                    }
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Edit", fontSize = 12.sp)
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(onClick = onCopy, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Salin", modifier = Modifier.size(16.dp))
+                }
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyStateBox(icon: androidx.compose.ui.graphics.vector.ImageVector, message: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(40.dp)
+            )
+        }
+        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -180,42 +227,33 @@ internal fun SettingsScreen(vm: MochiViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Pilih Provider AI", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
+        // Provider section
+        SectionTitle("Provider AI")
         providers.forEach { prov ->
             val isSelected = activeProvider.id == prov.id
             val currentModel = if (isSelected) modelText else (vm.storageModelFor(prov.id) ?: prov.model)
-            OutlinedCard(
+            ProviderSelectorCard(
+                provider = prov,
+                isSelected = isSelected,
+                currentModel = currentModel,
                 onClick = {
                     vm.selectProvider(prov)
                     apiKeyText = vm.apiKey.orEmpty()
                     baseUrlText = vm.customBaseUrl.orEmpty()
                     modelText = vm.customModel ?: prov.model
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = if (isSelected) CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.outlinedCardColors()
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(selected = isSelected, onClick = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(prov.name, fontWeight = FontWeight.Bold)
-                        Text("Model: $currentModel • ${prov.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
                 }
-            }
+            )
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        Text("Konfigurasi ${activeProvider.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        // Config section
+        SectionTitle("Konfigurasi ${activeProvider.name}")
 
         if (activeProvider.requiresApiKey) {
             OutlinedTextField(
@@ -232,10 +270,20 @@ internal fun SettingsScreen(vm: MochiViewModel) {
                     IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
                         Icon(if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle key")
                     }
-                }
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                )
             )
         } else {
-            Text("Provider ini tidak memerlukan API Key (misal: Local Ollama / LM Studio).", style = MaterialTheme.typography.bodyMedium)
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+            ) {
+                Text("Provider ini tidak memerlukan API Key (misal: Local Ollama / LM Studio).", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(12.dp))
+            }
         }
 
         OutlinedTextField(
@@ -247,11 +295,16 @@ internal fun SettingsScreen(vm: MochiViewModel) {
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Base URL Kustom (Opsional)") },
             placeholder = { Text("Contoh: ${activeProvider.baseUrl}") },
-            singleLine = true
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+            )
         )
 
-        // Model Selection & Fetch Button
-        Text("Pilihan Model AI", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        // Model section
+        SectionTitle("Pilihan Model AI")
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -277,7 +330,12 @@ internal fun SettingsScreen(vm: MochiViewModel) {
                         if (availableModels.isNotEmpty()) {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown)
                         }
-                    }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
                 if (availableModels.isNotEmpty()) {
                     ExposedDropdownMenu(
@@ -310,7 +368,7 @@ internal fun SettingsScreen(vm: MochiViewModel) {
                             fetchModelStatus = "Berhasil memuat ${list.size} model!"
                             if (list.isNotEmpty()) showModelDropdown = true
                         } else {
-                            fetchModelStatus = "Gagal memuat model: ${res.exceptionOrNull()?.message}"
+                            fetchModelStatus = "Gagal: ${res.exceptionOrNull()?.message}"
                         }
                     }
                 },
@@ -319,11 +377,11 @@ internal fun SettingsScreen(vm: MochiViewModel) {
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
             ) {
                 if (isFetchingModels) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Fetch", fontWeight = FontWeight.Bold)
+                    Text("Fetch", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             }
         }
@@ -337,6 +395,7 @@ internal fun SettingsScreen(vm: MochiViewModel) {
             )
         }
 
+        // Test connection button
         Button(
             onClick = {
                 isTesting = true
@@ -344,7 +403,7 @@ internal fun SettingsScreen(vm: MochiViewModel) {
                 scope.launch {
                     val result = vm.testConnection()
                     isTesting = false
-                    testStatus = if (result.isSuccess) "Koneksi Berhasil Disambungkan! ✓" else "Koneksi Gagal: ${result.exceptionOrNull()?.message}"
+                    testStatus = if (result.isSuccess) "Koneksi berhasil ✓" else "Koneksi gagal: ${result.exceptionOrNull()?.message}"
                 }
             },
             enabled = !isTesting,
@@ -356,30 +415,39 @@ internal fun SettingsScreen(vm: MochiViewModel) {
             if (isTesting) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Menguji Koneksi...", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text("Menguji koneksi...", fontWeight = FontWeight.SemiBold)
             } else {
-                Icon(Icons.Default.CheckCircle, contentDescription = null)
+                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Uji Koneksi API", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text("Uji Koneksi API", fontWeight = FontWeight.Bold)
             }
         }
 
         if (testStatus != null) {
-            Text(
-                text = testStatus!!,
-                color = if (testStatus!!.startsWith("Koneksi Berhasil")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Bold
-            )
+            val isSuccess = testStatus!!.startsWith("Koneksi berhasil")
+            Surface(
+                color = if (isSuccess) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = testStatus!!,
+                    modifier = Modifier.padding(10.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isSuccess) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        Text("Integrasi Glosarium & Context", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-
+        // Glossary integration
+        SectionTitle("Integrasi Glosarium & Context")
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -410,6 +478,7 @@ internal fun SettingsScreen(vm: MochiViewModel) {
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
+        // Auto-save toggle
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -430,42 +499,83 @@ internal fun SettingsScreen(vm: MochiViewModel) {
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-        // ===== Parameter Generasi AI =====
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Parameter Generasi AI", fontWeight = FontWeight.Bold)
-            Text(
-                "Berlaku untuk semua provider (Gemini, OpenAI, OpenRouter, lokal).",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                "Temperature: ${String.format(java.util.Locale.US, "%.1f", temperature)} " +
-                        if (temperature <= 0.3f) "(konsisten/presisi)" else "(kreatif/ekspresif)",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Slider(
-                value = temperature,
-                onValueChange = {
-                    temperature = it
-                    vm.generationTemperature = it
-                },
-                valueRange = 0f..1.5f
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                "Maks token per chunk: $maxTokens",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Slider(
-                value = maxTokens.toFloat(),
-                onValueChange = {
-                    val v = (it.toInt() / 256) * 256
-                    maxTokens = v
-                    vm.generationMaxTokens = v
-                },
-                valueRange = 1024f..16384f
-            )
+        // Generation parameters
+        SectionTitle("Parameter Generasi AI")
+        Text(
+            "Berlaku untuk semua provider (Gemini, OpenAI, OpenRouter, lokal).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "Temperature: ${String.format(java.util.Locale.US, "%.1f", temperature)} " +
+                    if (temperature <= 0.3f) "(konsisten/presisi)" else "(kreatif/ekspresif)",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Slider(
+            value = temperature,
+            onValueChange = {
+                temperature = it
+                vm.generationTemperature = it
+            },
+            valueRange = 0f..1.5f
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            "Maks token per chunk: $maxTokens",
+            style = MaterialTheme.typography.bodySmall
+        )
+        Slider(
+            value = maxTokens.toFloat(),
+            onValueChange = {
+                val v = (it.toInt() / 256) * 256
+                maxTokens = v
+                vm.generationMaxTokens = v
+            },
+            valueRange = 1024f..16384f
+        )
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+}
+
+@Composable
+private fun ProviderSelectorCard(
+    provider: ProviderConfig,
+    isSelected: Boolean,
+    currentModel: String,
+    onClick: () -> Unit
+) {
+    OutlinedCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = if (isSelected) CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)) else CardDefaults.outlinedCardColors(),
+        border = if (isSelected) CardDefaults.outlinedCardBorderColors(color = MaterialTheme.colorScheme.primary) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(selected = isSelected, onClick = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(provider.name, fontWeight = FontWeight.Bold)
+                if (isSelected) {
+                    Text("Model: $currentModel • ${provider.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (!provider.requiresApiKey) {
+                SuggestionChip(
+                    onClick = {},
+                    label = { Text(" Lokal", fontSize = 10.sp) },
+                    colors = ChipDefaults.chipColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                )
+            }
         }
     }
 }

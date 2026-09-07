@@ -40,7 +40,6 @@ internal fun chunkByParagraphs(text: String, maxChars: Int = 4000): List<String>
 
     for (paragraph in text.split("\n")) {
         when {
-            // Jalan terakhir: paragraf tunggal melebihi batas → potong paksa.
             paragraph.length + 1 > maxChars -> {
                 flushCurrent()
                 var start = 0
@@ -50,7 +49,6 @@ internal fun chunkByParagraphs(text: String, maxChars: Int = 4000): List<String>
                     start = end
                 }
             }
-            // Paragraf berikutnya tidak muat → simpan buffer dulu.
             current.length + paragraph.length + 1 > maxChars -> {
                 flushCurrent()
                 current.append(paragraph)
@@ -70,14 +68,8 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     private val storage = AppStorage(app)
     private val repository = TranslationRepository()
 
-    /**
-     * Seluruh I/O penyimpanan (baca awal + tulis) berjalan di sini — TIDAK
-     * pernah memblokir thread utama. StateFlow tetap dimutasi sinkron sebagai
-     * sumber kebenaran UI; Room hanya lapisan durabilitas.
-     */
     private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Koleksi yang sudah diedit sejak proses start — hidrasi awal tidak boleh menimpanya. */
     private val editedCollections: MutableSet<String> =
         java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
@@ -89,10 +81,12 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(TranslationState())
     val state: StateFlow<TranslationState> = _state.asStateFlow()
     private var job: Job? = null
-    val projects = MutableStateFlow(storage.projects())
-    val prompts = MutableStateFlow(storage.prompts())
-    val history = MutableStateFlow(storage.history())
-    val glossary = MutableStateFlow(storage.glossary())
+
+    /** Koleksi data asinkron — dimuat ulang tanpa memblokir main thread. */
+    val projects = MutableStateFlow<List<TranslationProject>>(emptyList())
+    val prompts = MutableStateFlow<List<PromptTemplate>>(BuiltIns.prompts)
+    val history = MutableStateFlow<List<TranslationRecord>>(emptyList())
+    val glossary = MutableStateFlow<List<GlossaryEntry>>(emptyList())
     val providers = MutableStateFlow(BuiltIns.providers)
     val activeProvider = MutableStateFlow(BuiltIns.providers.first())
     val activeProject = MutableStateFlow<TranslationProject?>(null)
@@ -112,12 +106,10 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         get() = storage.model(activeProvider.value.id)
         set(value) { if (value.isNullOrBlank()) storage.deleteModel(activeProvider.value.id) else storage.saveModel(activeProvider.value.id, value) }
 
-    /** Kreativitas model 0.0..1.5 — berlaku untuk semua provider. */
     var generationTemperature: Float
         get() = storage.temperature
         set(value) { storage.temperature = value.coerceIn(0f, 1.5f) }
 
-    /** Batas token output per chunk. */
     var generationMaxTokens: Int
         get() = storage.maxTokens
         set(value) { storage.maxTokens = value.coerceIn(256, 32768) }
@@ -131,9 +123,6 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         customModel = model
     }
 
-    /**
-     * Resolusi konfigurasi provider aktif yang memperhitungkan kustomisasi URL dan model.
-     */
     fun resolveCurrentProvider(): ProviderConfig {
         val prov = activeProvider.value
         val customUrl = customBaseUrl
@@ -197,8 +186,6 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        // Gagal setelah semua percobaan ulang: simpan hasil
-                        // parsial agar kerja user tidak hilang, lalu laporkan.
                         val partial = results.filter { it.isNotBlank() }.joinToString("\n")
                         _state.update {
                             it.copy(
@@ -225,11 +212,9 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                         currentProvider.id
                     )
                     history.update { current -> (listOf(record) + current).take(MAX_HISTORY_ITEMS) }
-                    persistAsync("history") { storage.saveHistory(history.value) }
+                    persistAsync("history") { storage.saveHistoryAsync(history.value) }
                 }
             } catch (e: CancellationException) {
-                // Pembatalan oleh user (cancel()) bukan error — jangan timpa
-                // pesan state dengan teks exception.
                 throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isTranslating = false, error = e.message ?: "Terjemahan gagal") }
@@ -249,11 +234,6 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(isTranslating = false, isPaused = false, progress = 0f) }
     }
 
-    /**
-     * Menerjemahkan satu chunk dengan percobaan ulang otomatis (maks
-     * [MAX_ATTEMPTS] kali) plus backoff progresif — menangani error sementara
-     * seperti rate limit 429 atau jaringan terputus tanpa langsung gagal.
-     */
     private suspend fun translateChunkWithRetry(
         provider: ProviderConfig,
         systemPrompt: String,
@@ -283,7 +263,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun savePrompt(prompt: PromptTemplate) {
         val updated = prompts.value.filterNot { it.id == prompt.id } + prompt
         prompts.value = updated
-        persistAsync("prompts") { storage.savePrompts(updated) }
+        persistAsync("prompts") { storage.savePromptsAsync(updated) }
         if (activePrompt.value.id == prompt.id) {
             activePrompt.value = prompt
         }
@@ -292,7 +272,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     fun deletePrompt(id: String) {
         val updated = prompts.value.filterNot { it.id == id && !it.isBuiltIn }
         prompts.value = updated
-        persistAsync("prompts") { storage.savePrompts(updated) }
+        persistAsync("prompts") { storage.savePromptsAsync(updated) }
         if (activePrompt.value.id == id) {
             activePrompt.value = updated.firstOrNull() ?: BuiltIns.defaultPrompt
         }
@@ -300,16 +280,12 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
 
     fun resetPromptsToDefault() {
         prompts.value = BuiltIns.prompts
-        persistAsync("prompts") { storage.savePrompts(prompts.value) }
+        persistAsync("prompts") { storage.savePromptsAsync(prompts.value) }
         if (prompts.value.none { it.id == activePrompt.value.id }) {
             activePrompt.value = BuiltIns.defaultPrompt
         }
     }
 
-    /**
-     * Duplikat prompt (termasuk built-in) menjadi salinan kustom yang bisa
-     * diedit. @return prompt baru, atau null jika id tidak ditemukan.
-     */
     fun duplicatePrompt(id: String): PromptTemplate? {
         val source = prompts.value.firstOrNull { it.id == id } ?: return null
         val copy = source.copy(
@@ -322,13 +298,8 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         return copy
     }
 
-    /** Ekspor seluruh prompt (built-in + kustom) sebagai JSON. */
     fun exportPromptsJson(): String = storage.json.encodeToString(prompts.value)
 
-    /**
-     * Impor prompt dari JSON hasil ekspor. Entri dengan id yang sama akan
-     * ditimpa; built-in bawaan selalu dipertahankan. @return jumlah entri diimpor.
-     */
     fun importPromptsJson(jsonContent: String): Result<Int> = runCatching {
         val importedList = storage.json.decodeFromString<List<PromptTemplate>>(jsonContent)
         val current = prompts.value.associateBy { it.id }.toMutableMap()
@@ -347,23 +318,21 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         BuiltIns.prompts.forEach { builtin -> current.putIfAbsent(builtin.id, builtin) }
         val newList = current.values.toList()
         prompts.value = newList
-        persistAsync("prompts") { storage.savePrompts(newList) }
+        persistAsync("prompts") { storage.savePromptsAsync(newList) }
         importedCount
     }
 
     fun saveGlossaryItem(entry: GlossaryEntry) {
         glossary.update { current -> current.filterNot { it.id == entry.id } + entry }
-        persistAsync("glossary") { storage.saveGlossary(glossary.value) }
+        persistAsync("glossary") { storage.saveGlossaryAsync(glossary.value) }
     }
 
     fun deleteGlossaryItem(id: String) {
         glossary.update { current -> current.filterNot { it.id == id } }
-        persistAsync("glossary") { storage.saveGlossary(glossary.value) }
+        persistAsync("glossary") { storage.saveGlossaryAsync(glossary.value) }
     }
 
-    fun exportGlossaryJson(): String {
-        return storage.json.encodeToString(glossary.value)
-    }
+    fun exportGlossaryJson(): String = storage.json.encodeToString(glossary.value)
 
     fun importGlossaryJson(jsonContent: String): Result<Int> = runCatching {
         val importedList = storage.json.decodeFromString<List<GlossaryEntry>>(jsonContent)
@@ -383,33 +352,52 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         }
         val newList = current.values.toList()
         glossary.value = newList
-        persistAsync("glossary") { storage.saveGlossary(newList) }
+        persistAsync("glossary") { storage.saveGlossaryAsync(newList) }
         addedCount
     }
 
     fun saveProject(project: TranslationProject) {
         projects.update { current -> current.filterNot { it.id == project.id } + project }
-        persistAsync("projects") { storage.saveProjects(projects.value) }
+        persistAsync("projects") { storage.saveProjectsAsync(projects.value) }
     }
 
     fun deleteProject(id: String) {
         projects.update { current -> current.filterNot { it.id == id } }
-        persistAsync("projects") { storage.saveProjects(projects.value) }
+        persistAsync("projects") { storage.saveProjectsAsync(projects.value) }
         if (activeProject.value?.id == id) activeProject.value = null
     }
 
     fun deleteHistoryItem(id: String) {
         history.update { current -> current.filterNot { it.id == id } }
-        persistAsync("history") { storage.saveHistory(history.value) }
+        persistAsync("history") { storage.saveHistoryAsync(history.value) }
     }
 
     fun clearHistory() {
         history.value = emptyList()
-        persistAsync("history") { storage.saveHistory(emptyList()) }
+        persistAsync("history") { storage.saveHistoryAsync(emptyList()) }
     }
 
     fun setAutoSave(value: Boolean) { storage.autoSaveHistory = value }
     fun autoSave(): Boolean = storage.autoSaveHistory
+
+    /**
+     * Memuat semua koleksi data dari storage secara asinkron saat VM dibuat.
+     * Dipanggil sekali oleh MainActivity setelah UI tampil.
+     */
+    fun loadInitialData() {
+        storageScope.launch {
+            storage.projectsFlow().collect { projects.value = it }
+        }
+        storageScope.launch {
+            storage.promptsFlow().collect { prompts.value = it }
+        }
+        storageScope.launch {
+            storage.historyFlow().collect { history.value = it }
+        }
+        storageScope.launch {
+            storage.glossaryFlow().collect { glossary.value = it }
+        }
+    }
 
     override fun onCleared() {
         storageScope.cancel()

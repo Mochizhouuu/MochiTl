@@ -8,6 +8,9 @@ import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
@@ -16,15 +19,11 @@ import kotlinx.serialization.json.Json
 /**
  * Penyimpanan aplikasi.
  *
- * - Pengaturan sederhana (API key terenkripsi, base URL, model, parameter
- *   generasi, flag auto-save) tetap memakai SharedPreferences.
- * - Koleksi (projects, prompts, glossary, history) kini tersimpan di
- *   database Room ([MochiTlDatabase]) — lebih aman & scalable dibanding
- *   JSON string di SharedPreferences. Data lama dimigrasikan otomatis
- *   sekali saat pertama kali dibuka.
+ * - Kredensial & pengaturan sederhana → EncryptedSharedPreferences / SharedPreferences.
+ * - Koleksi (projects, prompts, glossary, history) → Room database.
  *
- * API tetap sinkron agar tidak mengubah ViewModel/UI/test; ukuran data
- * koleksi kecil (≤100 riwayat) sehingga biayanya dapat diabaikan.
+ * Semua pembacaan koleksi dilakukan secara asinkron agar tidak memblokir
+ * thread utama saat aplikasi dibuka.
  */
 class AppStorage(context: Context) {
     private val appContext = context.applicationContext
@@ -71,7 +70,6 @@ class AppStorage(context: Context) {
         )
     }
 
-    /** Sekali jalan: pindahkan koleksi JSON lama di prefs ke Room. */
     private suspend fun migrateLegacyPrefsToRoom() {
         if (plain.getBoolean("room_migrated", false)) return
         if (db.projectDao().getAll().isEmpty()) {
@@ -84,14 +82,11 @@ class AppStorage(context: Context) {
             decodeLegacy<TranslationRecord>("history")?.let { db.historyDao().upsertAll(it.take(100)) }
         }
         if (db.promptDao().getAll().isEmpty()) {
-            // Prompt lama sudah menyertakan built-ins; gabungkan dengan
-            // bawaan agar built-ins selalu ada meski data lama rusak.
             val legacyPrompts = decodeLegacy<PromptTemplate>("prompts").orEmpty()
             db.promptDao().upsertAll(
                 (BuiltIns.prompts + legacyPrompts).associateBy { it.id }.values.toList()
             )
         }
-        // Key lama dibiarkan sebagai cadangan; penanda mencegah migrasi ulang.
         plain.edit().putBoolean("room_migrated", true).apply()
     }
 
@@ -113,29 +108,42 @@ class AppStorage(context: Context) {
     fun model(providerId: String): String? = plain.getString("model_$providerId", null)
     fun deleteModel(providerId: String) = plain.edit().remove("model_$providerId").apply()
 
-    // ===== Koleksi di Room =====
+    // ===== Data koleksi asinkron (Flow) — TIDAK memblokir main thread =====
 
-    fun saveProjects(items: List<TranslationProject>) = runBlocking {
-        db.projectDao().clear(); db.projectDao().upsertAll(items)
-    }
-    fun projects(): List<TranslationProject> = runBlocking { db.projectDao().getAll() }
+    fun projectsFlow(): Flow<List<TranslationProject>> = flow { emit(db.projectDao().getAll()) }.flowOn(Dispatchers.IO)
+    fun promptsFlow(): Flow<List<PromptTemplate>> = flow { emit(db.promptDao().getAll().ifEmpty { BuiltIns.prompts }) }.flowOn(Dispatchers.IO)
+    fun historyFlow(): Flow<List<TranslationRecord>> = flow { emit(db.historyDao().getAll()) }.flowOn(Dispatchers.IO)
+    fun glossaryFlow(): Flow<List<GlossaryEntry>> = flow { emit(db.glossaryDao().getAll()) }.flowOn(Dispatchers.IO)
 
-    fun savePrompts(items: List<PromptTemplate>) = runBlocking {
-        db.promptDao().clear(); db.promptDao().upsertAll(items)
-    }
-    fun prompts(): List<PromptTemplate> = runBlocking {
-        db.promptDao().getAll().ifEmpty { BuiltIns.prompts }
+    // ===== Write operations (async) =====
+
+    fun saveProjectsAsync(items: List<TranslationProject>) {
+        storageScope.launch {
+            db.projectDao().clear()
+            db.projectDao().upsertAll(items)
+        }
     }
 
-    fun saveHistory(items: List<TranslationRecord>) = runBlocking {
-        db.historyDao().clear(); db.historyDao().upsertAll(items.take(100))
+    fun savePromptsAsync(items: List<PromptTemplate>) {
+        storageScope.launch {
+            db.promptDao().clear()
+            db.promptDao().upsertAll(items)
+        }
     }
-    fun history(): List<TranslationRecord> = runBlocking { db.historyDao().getAll() }
 
-    fun saveGlossary(items: List<GlossaryEntry>) = runBlocking {
-        db.glossaryDao().clear(); db.glossaryDao().upsertAll(items)
+    fun saveHistoryAsync(items: List<TranslationRecord>) {
+        storageScope.launch {
+            db.historyDao().clear()
+            db.historyDao().upsertAll(items.take(100))
+        }
     }
-    fun glossary(): List<GlossaryEntry> = runBlocking { db.glossaryDao().getAll() }
+
+    fun saveGlossaryAsync(items: List<GlossaryEntry>) {
+        storageScope.launch {
+            db.glossaryDao().clear()
+            db.glossaryDao().upsertAll(items)
+        }
+    }
 
     // ===== Pengaturan umum =====
 
@@ -143,12 +151,10 @@ class AppStorage(context: Context) {
         get() = plain.getBoolean("auto_save_history", false)
         set(value) { plain.edit().putBoolean("auto_save_history", value).apply() }
 
-    /** Kreativitas model (0.0 konsisten .. 1.5 kreatif), dipakai semua provider. */
     var temperature: Float
         get() = plain.getFloat("temperature", 0.3f)
         set(value) { plain.edit().putFloat("temperature", value).apply() }
 
-    /** Batas token output per permintaan/chunk. */
     var maxTokens: Int
         get() = plain.getInt("max_tokens", 8192)
         set(value) { plain.edit().putInt("max_tokens", value).apply() }

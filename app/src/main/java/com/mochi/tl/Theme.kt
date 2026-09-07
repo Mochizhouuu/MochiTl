@@ -35,7 +35,11 @@ fun MochiAppTheme(
         background = Color(0xFFF7FBF5),
         surface = Color(0xFFF7FBF5),
         surfaceVariant = Color(0xFFDEE5D9),
-        onSurfaceVariant = Color(0xFF424940)
+        onSurfaceVariant = Color(0xFF424940),
+        surfaceContainer = Color(0xFFEEF3EB),
+        onSurface = Color(0xFF1A1C1A),
+        outline = Color(0xFF72796F),
+        outlineVariant = Color(0xFFC2C9BD)
     )
 
     val darkColors = darkColorScheme(
@@ -50,7 +54,11 @@ fun MochiAppTheme(
         background = Color(0xFF101410),
         surface = Color(0xFF101410),
         surfaceVariant = Color(0xFF424940),
-        onSurfaceVariant = Color(0xFFC2C9BD)
+        onSurfaceVariant = Color(0xFFC2C9BD),
+        surfaceContainer = Color(0xFF1C211C),
+        onSurface = Color(0xFFE2E8DC),
+        outline = Color(0xFF8C9389),
+        outlineVariant = Color(0xFF424940)
     )
 
     val colorScheme = if (darkTheme) darkColors else lightColors
