@@ -135,12 +135,12 @@ class MochiViewModelTest {
             project = null
         )
 
-        assertTrue(resultWithoutProject.contains("from Jepang into natural, accurate Indonesia"))
+        assertTrue(resultWithoutProject.contains("from Japanese to Indonesia"))
         assertTrue(resultWithoutProject.contains("<source_text>"))
         assertTrue(resultWithoutProject.contains("RAW DATA"))
-        assertTrue(resultWithoutProject.contains("Additional Style & Preference Rules (Strictly Follow):\nGunakan bahasa gaul"))
-        assertTrue(resultWithoutProject.contains("Glossary Mapping"))
-        assertTrue(resultWithoutProject.contains("- Mochi -> Kue Mochi (snack)"))
+        assertTrue(resultWithoutProject.contains("Gunakan bahasa gaul"))
+        assertTrue(resultWithoutProject.contains("## Glossary (Strict Enforcement)"))
+        assertTrue(resultWithoutProject.contains("• `Mochi` → `Kue Mochi`"))
 
         val project = TranslationProject("proj1", "Project", promptTemplateId = "p1", glossaryIds = listOf("other_glossary_id"))
         val resultWithEmptyProjectGlossary = PromptBuilder.buildSystemPrompt(
@@ -151,8 +151,8 @@ class MochiViewModelTest {
             project = project
         )
 
-        assertTrue(resultWithEmptyProjectGlossary.contains("from auto-detected source language into natural, accurate Inggris"))
-        assertFalse(resultWithEmptyProjectGlossary.contains("Glossary Mapping"))
+        assertTrue(resultWithEmptyProjectGlossary.contains("from the source language (auto-detected) to Inggris"))
+        assertFalse(resultWithEmptyProjectGlossary.contains("## Glossary (Strict Enforcement)"))
     }
 
     @Test
@@ -172,8 +172,8 @@ class MochiViewModelTest {
                 targetLanguage = "Indonesia",
                 glossaryList = emptyList()
             )
-            assertTrue("Kategori $category harus memuat aturan ENGLISH", result.contains("natural ENGLISH"))
-            assertTrue(result.contains("skills/special techniques"))
+            assertTrue("Kategori $category harus memuat aturan English", result.contains("natural English"))
+            assertTrue(result.contains("skills, techniques, titles, ranks, weapons"))
         }
     }
 
@@ -186,10 +186,10 @@ class MochiViewModelTest {
             targetLanguage = "Indonesia",
             glossaryList = emptyList()
         )
-        assertTrue(result.contains("Proper Nouns Handling"))
-        assertTrue(result.contains("MUST be ROMANIZED"))
-        // Kategori non-fiksi tidak boleh mendapat aturan skill->ENGLISH.
-        assertFalse(result.contains("natural ENGLISH"))
+        assertTrue(result.contains("## Proper Nouns & Names"))
+        assertTrue(result.contains("MUST be romanized"))
+        // Kategori non-fiksi tidak boleh mendapat aturan skill->English.
+        assertFalse(result.contains("natural English"))
     }
 
     @Test

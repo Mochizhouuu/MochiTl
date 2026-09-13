@@ -83,7 +83,7 @@ object BuiltIns {
 | 1. Gunakan gaya bahasa yang alami, akurat, dan mengalir sesuai konteks.
 | 2. Pertahankan nada dan register teks asli (formal/santai).
 | 3. Jangan terjemahkan nama diri — romanisasi sesuai bahasa aslinya.
-| 4. Adaptasi idiom dan peribahasa ke padanan {target} yang natural.
+| 4. Adaptasi idiom dan peribahasa ke padanan bahasa target yang natural.
 | 5. Jika ada istilah yang tidak memiliki padanan langsung, pertahankan istilah asli dengan penjelasan singkat pada kemunculan pertama.
         """.trimIndent(),
         "custom",
@@ -101,10 +101,10 @@ object BuiltIns {
 | 1. Jaga voice naratif — setiap tokoh harus memiliki "suara" yang konsisten.
 | 2. Dialog: buat natural seperti percakapan asli, hindari terjemahan kaku.
 | 3. Pertahankan honorifik Jepang/Korea (-san, -kun, -sama, oppa, unnie, dll).
-| 4. Onomatopoeia: gunakan padanan {target} jika ada, kalau tidak deskripsikan dalam teks.
-| 5. Monolog internal: sesuaikan konvensi narasi {target} (e.g., miring untuk pikiran).
-| 6. Judul bab, bagian, dan header tetap dalam bahasa aslinya kecuali sudah ada versi {target} yang mapan.
-| 7. Untuk light novel: pertahankan nuansa "terjemahan" yang umum di komunitas fiksi terjemah {target}.
+| 4. Onomatopoeia: gunakan padanan bahasa target jika ada, kalau tidak deskripsikan dalam teks.
+| 5. Monolog internal: sesuaikan konvensi narasi bahasa target (e.g., miring untuk pikiran).
+| 6. Judul bab, bagian, dan header tetap dalam bahasa aslinya kecuali sudah ada versi bahasa target yang mapan.
+| 7. Untuk light novel: pertahankan nuansa "terjemahan" yang umum di komunitas fiksi terjemah bahasa target.
 | 8. Konsistensi: istilah yang sama harus diterjemahkan sama di seluruh teks.
         """.trimIndent(),
         "novel",
@@ -121,10 +121,10 @@ object BuiltIns {
 | 2. Prioritaskan dampak visual: kalimat pendek untuk momen dramatis.
 | 3. Honorifik dan sapaan TETAP (san, kun, sama, oppa, unnie, etc).
 | 4. Narasi kotak: gunakan voice yang konsisten berbeda dari dialog tokoh.
-| 5. Sound effect (SFX): lokalisi ke {target} jika natural, otherwise pertahankan asli.
+| 5. Sound effect (SFX): lokalisi ke bahasa target jika natural, otherwise pertahankan asli.
 | 6. Webtoon vertikal: perhatikan flow scroll — hindari kalimat yang terlalu panjang per panel.
-| 7. Slang & bahasa gaul: adaptasi ke budaya {target} tanpa menghilangkan karakter tokoh.
-| 8. Jangan-translate nama jurus/skill ke {target} — gunakan romanisasi/terjemahan Inggris sesuai konvensi.
+| 7. Slang & bahasa gaul: adaptasi ke budaya bahasa target tanpa menghilangkan karakter tokoh.
+| 8. Jangan-translate nama jurus/skill ke bahasa target — gunakan romanisasi/terjemahan Inggris sesuai konvensi.
         """.trimIndent(),
         "comic",
         "Khusus percakapan komik, manga, manhwa, dan webtoon.",
@@ -136,11 +136,11 @@ object BuiltIns {
             """
 | Aturan Gaya Dokumen & Akademik
 |================================
-| 1. Gunakan bahasa {target} formal, lugas, dan akademis.
-| 2. Istilah teknis: gunakan terminologi baku {target} yang telah mapan.
+| 1. Gunakan bahasa bahasa target formal, lugas, dan akademis.
+| 2. Istilah teknis: gunakan terminologi baku bahasa target yang telah mapan.
 | 3. Jika tidak ada padanan baku, pertahankan istilah Inggris dalam *miring*.
 | 4. Pertahankan format sitasi, footnote, dan referensi persis seperti aslinya.
-| 5. Angka dan satuan: ikuti konvensi {target} (koma desimal, satuan metrik).
+| 5. Angka dan satuan: ikuti konvensi bahasa target (koma desimal, satuan metrik).
 | 6. Janganparafrase isi akademik — terjemahkan seakurat mungkin tanpa menambah/mengurangi makna.
 | 7. Judul jurnal, nama konferensi, dan nama institusi tetap dalam bahasa aslinya.
         """.trimIndent(),
