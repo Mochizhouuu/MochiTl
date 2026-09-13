@@ -71,7 +71,7 @@ object PromptBuilder {
             // ── 5. CATEGORY-SPECIFIC RULES ──
             append("## Category-Specific Guidelines")
             appendLine()
-            appendLine(getCategoryRules(category))
+            appendLine(getCategoryRules(category, targetLanguage))
             appendLine()
 
             // ── 6. PROPER NOUNS ──
@@ -158,7 +158,7 @@ object PromptBuilder {
         }
     }
 
-    private fun getCategoryRules(category: String): String {
+    private fun getCategoryRules(category: String, targetLanguage: String): String {
         return when {
             category.contains("novel") || category.contains("fic") -> {
                 """
