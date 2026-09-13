@@ -8,7 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -24,176 +26,313 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
- * Layar beranda yang dipoles — grid aksi dengan kartu visual.
+ * Layar beranda yang dipoles — Dashboard workspace berstandar utility profesional.
  */
 @Composable
 internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
     val glossaryList by vm.glossary.collectAsState()
+    val activeProject by vm.activeProject.collectAsState()
+    val activeProvider by vm.activeProvider.collectAsState()
+    val activePrompt by vm.activePrompt.collectAsState()
+    val history by vm.history.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp, vertical = 20.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header Card
-        Surface(
+        // Hero Header Card
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            tonalElevation = 2.dp
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Image(
                     painter = painterResource(R.drawable.mochitl_mascot),
                     contentDescription = "MochiTL Mascot",
                     modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(14.dp))
                 )
-                Text(
-                    text = "MochiTL Workspace",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = "Penerjemah AI Novel, Manga, Manhwa & File",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-                    textAlign = TextAlign.Center
-                )
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MochiTL Workspace",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Penerjemah AI Novel, Manga & Dokumen",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "Provider: ${activeProvider.name}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+
+                        if (activeProject != null) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = "📁 ${activeProject!!.name}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        // Grid Aksi Utama
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+        // Translation Launchers Section
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
-                ActionCard(
-                    icon = Icons.Default.Language,
-                    label = "Terjemahkan Teks",
-                    subtitle = "Masukkan teks langsung",
-                    color = MaterialTheme.colorScheme.primary,
-                    onClick = { navigate(Screen.TEXT) },
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Text(
+                text = "Penerjemahan",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Direct Text Translation Card
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { navigate(Screen.TEXT) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Icon(
+                                Icons.Default.Language,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Terjemahkan Teks",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Editor langsung & real-time stats",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // File Translation Card
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { navigate(Screen.FILE) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Icon(
+                                Icons.Default.Description,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Terjemahkan File",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "TXT, EPUB, DOCX, & PDF",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
-            item {
-                ActionCard(
-                    icon = Icons.Default.Description,
-                    label = "Terjemahkan File",
-                    subtitle = "TXT, PDF, DOCX, EPUB",
-                    color = MaterialTheme.colorScheme.secondary,
-                    onClick = { navigate(Screen.FILE) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            item {
-                ActionCard(
+        }
+
+        // Tools & Workspace Management Section
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Alat Workspace",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardTile(
                     icon = Icons.Default.Book,
-                    label = "Proyek",
-                    subtitle = "Kelola proyek terjemahan",
-                    color = Color(0xFF1565C0),
+                    title = "Proyek",
+                    subtitle = activeProject?.name ?: "Kelola proyek",
                     onClick = { navigate(Screen.PROJECTS) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.weight(1f)
                 )
-            }
-            item {
-                ActionCard(
+                DashboardTile(
                     icon = Icons.AutoMirrored.Filled.Send,
-                    label = "Prompt",
-                    subtitle = "Pengelola template prompt",
-                    color = Color(0xFF6A1B9A),
+                    title = "Prompt",
+                    subtitle = activePrompt.name,
                     onClick = { navigate(Screen.PROMPTS) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.weight(1f)
                 )
             }
-            item {
-                ActionCard(
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DashboardTile(
                     icon = Icons.AutoMirrored.Filled.Comment,
-                    label = "Glosarium",
+                    title = "Glosarium",
                     subtitle = "${glossaryList.size} istilah tersimpan",
-                    color = Color(0xFF00838F),
                     onClick = { navigate(Screen.GLOSSARY) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.weight(1f)
                 )
-            }
-            item {
-                ActionCard(
+                DashboardTile(
                     icon = Icons.Default.Settings,
-                    label = "Pengaturan AI",
-                    subtitle = "Provider & parameter",
-                    color = Color(0xFFBF360C),
+                    title = "Pengaturan AI",
+                    subtitle = "${activeProvider.name} (${activeProvider.model.take(12)}...)",
                     onClick = { navigate(Screen.SETTINGS) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        // Riwayat ringkas — card kecil di bawah
-        val history by vm.history.collectAsState()
+        // Recent History Quick Card
         if (history.isNotEmpty()) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navigate(Screen.HISTORY) }
-                    .then(Modifier.padding(bottom = 8.dp)),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
+                Text(
+                    text = "Riwayat Terbaru",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .clickable { navigate(Screen.HISTORY) },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Riwayat Terjemahan",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${history.size} terjemahan tersimpan",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Icon(
-                            Icons.Default.History,
+                            Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(10.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Riwayat Terjemahan",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${history.size} terjemahan tersimpan",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
         }
@@ -201,42 +340,39 @@ internal fun HomeScreen(vm: MochiViewModel, navigate: (Screen) -> Unit) {
 }
 
 @Composable
-private fun ActionCard(
+private fun DashboardTile(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
+    title: String,
     subtitle: String,
-    color: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .height(120.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = color.copy(alpha = 0.12f)
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.padding(10.dp)
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(6.dp)
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = label,
+                    text = title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -244,7 +380,9 @@ private fun ActionCard(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

@@ -86,10 +86,15 @@ internal fun HistoryScreen(
             }
 
             items(history) { record ->
-                HistoryCard(record = record, onSelect = onSelectHistoryItem, onDelete = { vm.deleteHistoryItem(record.id) }, onCopy = {
-                    clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", record.translatedText))
-                    Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
-                })
+                HistoryCard(
+                    record = record,
+                    onSelect = onSelectHistoryItem,
+                    onDelete = { vm.deleteHistoryItem(record.id) },
+                    onCopy = {
+                        clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", record.translatedText))
+                        Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
+                    }
+                )
             }
         }
     }
@@ -147,7 +152,8 @@ private fun HistoryCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 FilledTonalButton(
                     onClick = { onSelect(record.translatedText) },
@@ -158,7 +164,7 @@ private fun HistoryCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Edit", fontSize = 12.sp)
                 }
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.weight(1f))
                 IconButton(onClick = onCopy, modifier = Modifier.size(36.dp)) {
                     Icon(Icons.Default.ContentCopy, contentDescription = "Salin", modifier = Modifier.size(16.dp))
                 }
@@ -195,7 +201,13 @@ private fun EmptyStateBox(icon: androidx.compose.ui.graphics.vector.ImageVector,
 }
 
 @Composable
-internal fun SettingsScreen(vm: MochiViewModel) {
+internal fun SettingsScreen(
+    vm: MochiViewModel,
+    isDarkTheme: Boolean = false,
+    isOledTheme: Boolean = false,
+    onToggleTheme: () -> Unit = {},
+    onToggleOled: () -> Unit = {}
+) {
     val providers by vm.providers.collectAsState()
     val activeProvider by vm.activeProvider.collectAsState()
     val availableModels by vm.availableModels.collectAsState()
@@ -233,6 +245,54 @@ internal fun SettingsScreen(vm: MochiViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Theme Settings Section
+        SectionTitle("Tampilan & Tema")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Mode Gelap (Dark Mode)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text("Aktifkan tema gelap berdesaturasi rendah", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = isDarkTheme,
+                        onCheckedChange = { onToggleTheme() }
+                    )
+                }
+
+                if (isDarkTheme) {
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("OLED / AMOLED True Black", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text("Latar belakang hitam murni (#000000) hemat baterai", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(
+                            checked = isOledTheme,
+                            onCheckedChange = { onToggleOled() }
+                        )
+                    }
+                }
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
         // Provider section
         SectionTitle("Provider AI")
         providers.forEach { prov ->
@@ -594,4 +654,3 @@ private fun ProviderCardContent(provider: ProviderConfig, currentModel: String, 
         }
     }
 }
-
