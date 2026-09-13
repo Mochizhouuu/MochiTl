@@ -9,10 +9,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 import android.content.ClipData
@@ -32,19 +41,6 @@ import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.border
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
     private val vm: MochiViewModel by viewModels()
@@ -53,12 +49,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             var isDarkTheme by remember { mutableStateOf(false) }
-            MochiAppTheme(darkTheme = isDarkTheme) {
-                // Muat data seketika setelah frame pertama tampil — tanpa delay.
+            var isOledTheme by remember { mutableStateOf(false) }
+
+            MochiAppTheme(darkTheme = isDarkTheme, isOledMode = isOledTheme) {
                 LaunchedEffect(Unit) {
                     vm.loadInitialData()
                 }
-                MochiApp(vm, isDarkTheme = isDarkTheme, onToggleTheme = { isDarkTheme = !isDarkTheme })
+                MochiApp(
+                    vm = vm,
+                    isDarkTheme = isDarkTheme,
+                    isOledTheme = isOledTheme,
+                    onToggleTheme = { isDarkTheme = !isDarkTheme },
+                    onToggleOled = { isOledTheme = !isOledTheme }
+                )
             }
         }
     }
@@ -89,7 +92,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
 internal enum class Screen { HOME, TEXT, FILE, PROJECTS, PROMPTS, GLOSSARY, HISTORY, SETTINGS, ABOUT }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,7 +99,9 @@ internal enum class Screen { HOME, TEXT, FILE, PROJECTS, PROMPTS, GLOSSARY, HIST
 fun MochiApp(
     vm: MochiViewModel,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    isOledTheme: Boolean,
+    onToggleTheme: () -> Unit,
+    onToggleOled: () -> Unit
 ) {
     var screen by remember { mutableStateOf(Screen.HOME) }
     var docPageTarget by remember { mutableIntStateOf(0) }
@@ -126,33 +130,33 @@ fun MochiApp(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                tonalElevation = 8.dp
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                drawerTonalElevation = 4.dp
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
                         .padding(16.dp)
                 ) {
-                    // Header drawer dengan gradient accent
+                    // Drawer Header
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp)
+                            .padding(bottom = 16.dp, top = 8.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                            modifier = Modifier.size(52.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     Icons.Default.AutoAwesome,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(26.dp)
                                 )
                             }
                         }
@@ -174,7 +178,7 @@ fun MochiApp(
 
                     if (activeProject != null) {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -195,7 +199,7 @@ fun MochiApp(
                                     Text(
                                         text = "Proyek Aktif",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                                     )
                                     Text(
                                         text = activeProject!!.name,
@@ -210,35 +214,38 @@ fun MochiApp(
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                    val menuItems = listOf(
+                    val drawerMenuItems = listOf(
                         Screen.HOME to ("Beranda" to Icons.Default.Home),
                         Screen.TEXT to ("Terjemahkan Teks" to Icons.Default.Language),
                         Screen.FILE to ("Terjemahkan File" to Icons.Default.Description),
-                        Screen.PROJECTS to ("Proyek" to Icons.Default.Book),
+                        Screen.PROJECTS to ("Proyek Terjemahan" to Icons.Default.Book),
                         Screen.PROMPTS to ("Pengelola Prompt" to Icons.AutoMirrored.Filled.Send),
-                        Screen.GLOSSARY to ("Glosarium" to Icons.AutoMirrored.Filled.Comment),
-                        Screen.HISTORY to ("Riwayat" to Icons.Default.History),
+                        Screen.GLOSSARY to ("Glosarium Istilah" to Icons.AutoMirrored.Filled.Comment),
+                        Screen.HISTORY to ("Riwayat Terjemahan" to Icons.Default.History),
                         Screen.SETTINGS to ("Pengaturan AI" to Icons.Default.Settings),
-                        Screen.ABOUT to ("Dokumentasi" to Icons.Default.Info)
+                        Screen.ABOUT to ("Dokumentasi & Panduan" to Icons.Default.Info)
                     )
 
                     LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(menuItems) { (targetScreen, pair) ->
+                        items(drawerMenuItems) { (targetScreen, pair) ->
                             val (label, icon) = pair
                             NavigationDrawerItem(
-                                label = { Text(label) },
+                                label = { Text(label, style = MaterialTheme.typography.labelLarge) },
                                 selected = screen == targetScreen,
                                 onClick = {
                                     screen = targetScreen
                                     scope.launch { drawerState.close() }
                                 },
                                 icon = { Icon(icon, contentDescription = null) },
-                                modifier = Modifier.padding(vertical = 2.dp)
+                                modifier = Modifier.padding(vertical = 2.dp),
+                                shape = RoundedCornerShape(10.dp)
                             )
                         }
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    // Theme toggles
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -254,6 +261,24 @@ fun MochiApp(
                                 if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
                                 contentDescription = "Toggle Theme",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (isDarkTheme) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "OLED True Black",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Switch(
+                                checked = isOledTheme,
+                                onCheckedChange = { onToggleOled() }
                             )
                         }
                     }
@@ -274,7 +299,8 @@ fun MochiApp(
                                 text = screenTitle(screen),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge
                             )
                             if (activeProject != null && screen != Screen.HOME) {
                                 Text(
@@ -300,6 +326,43 @@ fun MochiApp(
                         }
                     }
                 )
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 6.dp
+                ) {
+                    NavigationBarItem(
+                        selected = screen == Screen.HOME,
+                        onClick = { screen = Screen.HOME },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "Beranda") },
+                        label = { Text("Beranda", style = MaterialTheme.typography.labelMedium) }
+                    )
+                    NavigationBarItem(
+                        selected = screen == Screen.TEXT || screen == Screen.FILE,
+                        onClick = { screen = Screen.TEXT },
+                        icon = { Icon(Icons.Default.Translate, contentDescription = "Terjemahkan") },
+                        label = { Text("Terjemah", style = MaterialTheme.typography.labelMedium) }
+                    )
+                    NavigationBarItem(
+                        selected = screen == Screen.PROJECTS,
+                        onClick = { screen = Screen.PROJECTS },
+                        icon = { Icon(Icons.Default.Book, contentDescription = "Proyek") },
+                        label = { Text("Proyek", style = MaterialTheme.typography.labelMedium) }
+                    )
+                    NavigationBarItem(
+                        selected = screen == Screen.PROMPTS || screen == Screen.GLOSSARY,
+                        onClick = { screen = Screen.PROMPTS },
+                        icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Prompt") },
+                        label = { Text("Prompt", style = MaterialTheme.typography.labelMedium) }
+                    )
+                    NavigationBarItem(
+                        selected = screen == Screen.SETTINGS,
+                        onClick = { screen = Screen.SETTINGS },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = "Pengaturan") },
+                        label = { Text("Pengaturan", style = MaterialTheme.typography.labelMedium) }
+                    )
+                }
             }
         ) { padding ->
             Surface(
@@ -310,22 +373,32 @@ fun MochiApp(
             ) {
                 when (screen) {
                     Screen.HOME -> HomeScreen(vm) { screen = it }
-                    Screen.TEXT -> TextTranslationScreen(vm)
-                    Screen.FILE -> FileTranslationScreen(vm)
+                    Screen.TEXT -> TextTranslationScreen(vm, onSwitchToFile = { screen = Screen.FILE })
+                    Screen.FILE -> FileTranslationScreen(vm, onSwitchToText = { screen = Screen.TEXT })
                     Screen.PROJECTS -> ProjectsScreen(vm)
                     Screen.PROMPTS -> PromptScreen(
                         vm = vm,
+                        onNavigateToGlossary = { screen = Screen.GLOSSARY },
                         onNavigateToDocumentation = { page ->
                             docPageTarget = page
                             screen = Screen.ABOUT
                         }
                     )
-                    Screen.GLOSSARY -> GlossaryScreen(vm)
+                    Screen.GLOSSARY -> GlossaryScreen(
+                        vm = vm,
+                        onNavigateToPrompts = { screen = Screen.PROMPTS }
+                    )
                     Screen.HISTORY -> HistoryScreen(vm, onSelectHistoryItem = { text ->
                         vm.setInput(text)
                         screen = Screen.TEXT
                     })
-                    Screen.SETTINGS -> SettingsScreen(vm)
+                    Screen.SETTINGS -> SettingsScreen(
+                        vm = vm,
+                        isDarkTheme = isDarkTheme,
+                        isOledTheme = isOledTheme,
+                        onToggleTheme = onToggleTheme,
+                        onToggleOled = onToggleOled
+                    )
                     Screen.ABOUT -> DocumentationScreen(initialPage = docPageTarget)
                 }
             }
@@ -393,8 +466,8 @@ private fun ProjectsScreen(vm: MochiViewModel) {
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = if (isActive) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors()
+                    shape = RoundedCornerShape(14.dp),
+                    colors = if (isActive) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
@@ -478,12 +551,11 @@ private fun ProjectsScreen(vm: MochiViewModel) {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-
-
 @Composable
 private fun PromptScreen(
     vm: MochiViewModel,
-    onNavigateToDocumentation: (Int) -> Unit
+    onNavigateToGlossary: () -> Unit = {},
+    onNavigateToDocumentation: (Int) -> Unit = {}
 ) {
     val prompts by vm.prompts.collectAsState()
     val context = LocalContext.current
@@ -537,6 +609,30 @@ private fun PromptScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Tab Switcher between Prompt & Glossary
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            SegmentedButton(
+                selected = true,
+                onClick = {},
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Prompt Template", style = MaterialTheme.typography.labelMedium)
+            }
+            SegmentedButton(
+                selected = false,
+                onClick = onNavigateToGlossary,
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Glosarium Istilah", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -613,7 +709,7 @@ private fun PromptScreen(
             }
         }
 
-        // Pencarian & cadangan prompt
+        // Search & Backup Controls
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -667,7 +763,8 @@ private fun PromptScreen(
             items(filteredPrompts) { p ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
@@ -723,8 +820,6 @@ private fun PromptScreen(
                                     }
                                 }
                             } else {
-                                // Built-in tidak bisa diedit/hapus, tapi bisa diduplikat
-                                // menjadi salinan kustom.
                                 IconButton(onClick = { vm.duplicatePrompt(p.id) }) {
                                     Icon(Icons.Default.ContentCopy, contentDescription = "Duplikat sebagai kustom")
                                 }
@@ -756,11 +851,12 @@ private fun PromptScreen(
     }
 }
 
-
-
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GlossaryScreen(vm: MochiViewModel) {
+private fun GlossaryScreen(
+    vm: MochiViewModel,
+    onNavigateToPrompts: () -> Unit = {}
+) {
     val glossaryList by vm.glossary.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
@@ -816,6 +912,30 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Tab Switcher between Prompt & Glossary
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            SegmentedButton(
+                selected = false,
+                onClick = onNavigateToPrompts,
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Prompt Template", style = MaterialTheme.typography.labelMedium)
+            }
+            SegmentedButton(
+                selected = true,
+                onClick = {},
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Glosarium Istilah", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -909,7 +1029,8 @@ private fun GlossaryScreen(vm: MochiViewModel) {
             items(filtered) { entry ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
                     Row(
                         modifier = Modifier

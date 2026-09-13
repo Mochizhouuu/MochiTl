@@ -48,7 +48,8 @@ internal fun ProjectEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (project == null) "Tambah Proyek Baru" else "Edit Proyek") },
+        shape = RoundedCornerShape(16.dp),
+        title = { Text(if (project == null) "Tambah Proyek Baru" else "Edit Proyek", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -61,6 +62,7 @@ internal fun ProjectEditDialog(
                     onValueChange = { name = it },
                     label = { Text("Nama Proyek") },
                     singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -68,6 +70,7 @@ internal fun ProjectEditDialog(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Deskripsi / Catatan Proyek") },
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -94,7 +97,7 @@ internal fun ProjectEditDialog(
                         modifier = Modifier
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
                             .fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(10.dp)
                     )
                     ExposedDropdownMenu(
                         expanded = showPromptDropdown,
@@ -127,7 +130,7 @@ internal fun ProjectEditDialog(
                         modifier = Modifier
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
                             .fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(10.dp)
                     )
                     ExposedDropdownMenu(
                         expanded = showProviderDropdown,
@@ -151,8 +154,8 @@ internal fun ProjectEditDialog(
                     Text("Belum ada glosarium. Semua istilah umum akan digunakan.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(8.dp)) {
@@ -188,6 +191,7 @@ internal fun ProjectEditDialog(
         },
         confirmButton = {
             Button(
+                shape = RoundedCornerShape(10.dp),
                 onClick = {
                     if (name.isNotBlank()) {
                         val proj = TranslationProject(
@@ -205,7 +209,7 @@ internal fun ProjectEditDialog(
             ) { Text("Simpan") }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text("Batal") }
+            OutlinedButton(shape = RoundedCornerShape(10.dp), onClick = onDismiss) { Text("Batal") }
         }
     )
 }
@@ -220,6 +224,7 @@ internal fun PromptSampleViewerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
         title = {
             Column {
                 Text(text = "Referensi Template: ${prompt.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -236,7 +241,7 @@ internal fun PromptSampleViewerDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -249,10 +254,11 @@ internal fun PromptSampleViewerDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) { Text("Tutup") }
+            Button(shape = RoundedCornerShape(10.dp), onClick = onDismiss) { Text("Tutup") }
         },
         dismissButton = {
             OutlinedButton(
+                shape = RoundedCornerShape(10.dp),
                 onClick = {
                     clipboard.setPrimaryClip(ClipData.newPlainText("Prompt Reference", prompt.content))
                     Toast.makeText(context, "Teks prompt disalin ke clipboard", Toast.LENGTH_SHORT).show()
@@ -281,7 +287,8 @@ internal fun PromptEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (prompt == null) "Tambah Prompt Baru" else "Edit Prompt") },
+        shape = RoundedCornerShape(16.dp),
+        title = { Text(if (prompt == null) "Tambah Prompt Baru" else "Edit Prompt", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -294,12 +301,14 @@ internal fun PromptEditDialog(
                     onValueChange = { name = it },
                     label = { Text("Nama Prompt") },
                     singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Deskripsi Singkat") },
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -310,6 +319,7 @@ internal fun PromptEditDialog(
                     onValueChange = { contentValue = it },
                     label = { Text("Aturan Gaya Terjemahan") },
                     placeholder = { Text("Contoh: gunakan bahasa gaul, pertahankan honorifik Jepang, jangan terjemahkan nama tempat...") },
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 5
                 )
@@ -343,6 +353,7 @@ internal fun PromptEditDialog(
         },
         confirmButton = {
             Button(
+                shape = RoundedCornerShape(10.dp),
                 onClick = {
                     if (name.isNotBlank() && contentValue.text.isNotBlank()) {
                         val p = PromptTemplate(
@@ -359,7 +370,7 @@ internal fun PromptEditDialog(
                 enabled = name.isNotBlank() && contentValue.text.isNotBlank()
             ) { Text("Simpan") }
         },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Batal") } }
+        dismissButton = { OutlinedButton(shape = RoundedCornerShape(10.dp), onClick = onDismiss) { Text("Batal") } }
     )
 }
 
@@ -375,7 +386,8 @@ internal fun GlossaryEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (entry == null) "Tambah Istilah Glosarium" else "Edit Istilah") },
+        shape = RoundedCornerShape(16.dp),
+        title = { Text(if (entry == null) "Tambah Istilah Glosarium" else "Edit Istilah", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -388,6 +400,7 @@ internal fun GlossaryEditDialog(
                     onValueChange = { source = it },
                     label = { Text("Teks / Istilah Asli") },
                     singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -395,18 +408,21 @@ internal fun GlossaryEditDialog(
                     onValueChange = { target = it },
                     label = { Text("Terjemahan Baku") },
                     singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
                     label = { Text("Catatan Context (Opsional)") },
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             Button(
+                shape = RoundedCornerShape(10.dp),
                 onClick = {
                     if (source.isNotBlank() && target.isNotBlank()) {
                         val item = GlossaryEntry(
@@ -421,6 +437,6 @@ internal fun GlossaryEditDialog(
                 enabled = source.isNotBlank() && target.isNotBlank()
             ) { Text("Simpan") }
         },
-        dismissButton = { OutlinedButton(onClick = onDismiss) { Text("Batal") } }
+        dismissButton = { OutlinedButton(shape = RoundedCornerShape(10.dp), onClick = onDismiss) { Text("Batal") } }
     )
 }
