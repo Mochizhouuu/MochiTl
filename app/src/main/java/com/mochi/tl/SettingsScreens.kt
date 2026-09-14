@@ -26,8 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mochi.tl.designsystem.MochiAppTheme
+import com.mochi.tl.designsystem.components.*
 import kotlinx.coroutines.launch
 
 /**
@@ -42,6 +45,26 @@ internal fun HistoryScreen(
     val context = LocalContext.current
     val clipboard = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
 
+    HistoryScreenContent(
+        history = history,
+        onClearHistory = vm::clearHistory,
+        onSelectHistoryItem = onSelectHistoryItem,
+        onDeleteHistoryItem = vm::deleteHistoryItem,
+        onCopyText = { text ->
+            clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", text))
+            Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
+        }
+    )
+}
+
+@Composable
+internal fun HistoryScreenContent(
+    history: List<TranslationRecord>,
+    onClearHistory: () -> Unit,
+    onSelectHistoryItem: (String) -> Unit,
+    onDeleteHistoryItem: (String) -> Unit,
+    onCopyText: (String) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -64,13 +87,10 @@ internal fun HistoryScreen(
             )
             if (history.isNotEmpty()) {
                 Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
-                    onClick = { vm.clearHistory() },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
+                MochiGhostButton(onClick = onClearHistory) {
+                    Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Hapus Semua", fontSize = 13.sp)
+                    Text("Hapus Semua", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -81,7 +101,11 @@ internal fun HistoryScreen(
         ) {
             if (history.isEmpty()) {
                 item {
-                    EmptyStateBox(icon = Icons.Default.History, message = "Belum ada riwayat terjemahan tersimpan.")
+                    MochiEmptyState(
+                        icon = Icons.Default.History,
+                        title = "Belum Ada Riwayat",
+                        description = "Hasil terjemahan yang disimpan akan muncul di sini."
+                    )
                 }
             }
 
@@ -89,11 +113,8 @@ internal fun HistoryScreen(
                 HistoryCard(
                     record = record,
                     onSelect = onSelectHistoryItem,
-                    onDelete = { vm.deleteHistoryItem(record.id) },
-                    onCopy = {
-                        clipboard.setPrimaryClip(ClipData.newPlainText("MochiTL", record.translatedText))
-                        Toast.makeText(context, "Disalin ke clipboard", Toast.LENGTH_SHORT).show()
-                    }
+                    onDelete = { onDeleteHistoryItem(record.id) },
+                    onCopy = { onCopyText(record.translatedText) }
                 )
             }
         }
@@ -107,15 +128,10 @@ private fun HistoryCard(
     onDelete: () -> Unit,
     onCopy: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-    ) {
+    MochiCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            // Source preview
             Text(
-                text = "📝 Sumber",
+                text = "Sumber",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold
@@ -130,9 +146,8 @@ private fun HistoryCard(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-            // Translated text
             Text(
-                text = "✅ Hasil Terjemahan",
+                text = "Hasil Terjemahan",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
@@ -155,10 +170,9 @@ private fun HistoryCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilledTonalButton(
+                MochiOutlinedButton(
                     onClick = { onSelect(record.translatedText) },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    modifier = Modifier.height(36.dp)
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -173,30 +187,6 @@ private fun HistoryCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyStateBox(icon: androidx.compose.ui.graphics.vector.ImageVector, message: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(40.dp)
-            )
-        }
-        Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -237,6 +227,130 @@ internal fun SettingsScreen(
         fetchModelStatus = null
     }
 
+    SettingsScreenContent(
+        providers = providers,
+        activeProvider = activeProvider,
+        availableModels = availableModels,
+        glossaryCount = glossaryList.size,
+        activeProjectName = activeProject?.name,
+        activeProjectGlossaryCount = activeProject?.glossaryIds?.size ?: 0,
+        isDarkTheme = isDarkTheme,
+        isOledTheme = isOledTheme,
+        apiKeyText = apiKeyText,
+        baseUrlText = baseUrlText,
+        modelText = modelText,
+        isKeyVisible = isKeyVisible,
+        autoSaveHistory = autoSaveHistory,
+        temperature = temperature,
+        maxTokens = maxTokens,
+        testStatus = testStatus,
+        isTesting = isTesting,
+        isFetchingModels = isFetchingModels,
+        fetchModelStatus = fetchModelStatus,
+        showModelDropdown = showModelDropdown,
+        onToggleTheme = onToggleTheme,
+        onToggleOled = onToggleOled,
+        onSelectProvider = { prov ->
+            vm.selectProvider(prov)
+            apiKeyText = vm.apiKey.orEmpty()
+            baseUrlText = vm.customBaseUrl.orEmpty()
+            modelText = vm.customModel ?: prov.model
+        },
+        onApiKeyChange = {
+            apiKeyText = it
+            vm.apiKey = it
+        },
+        onBaseUrlChange = {
+            baseUrlText = it
+            vm.customBaseUrl = it
+        },
+        onModelChange = {
+            modelText = it
+            vm.setModelForActiveProvider(it)
+        },
+        onToggleKeyVisible = { isKeyVisible = !isKeyVisible },
+        onAutoSaveChange = {
+            autoSaveHistory = it
+            vm.setAutoSave(it)
+        },
+        onTemperatureChange = {
+            temperature = it
+            vm.generationTemperature = it
+        },
+        onMaxTokensChange = {
+            maxTokens = it
+            vm.generationMaxTokens = it
+        },
+        onFetchModels = {
+            isFetchingModels = true
+            fetchModelStatus = null
+            scope.launch {
+                val res = vm.fetchModelsForActiveProvider()
+                isFetchingModels = false
+                if (res.isSuccess) {
+                    val list = res.getOrDefault(emptyList())
+                    fetchModelStatus = "Berhasil memuat ${list.size} model"
+                    if (list.isNotEmpty()) showModelDropdown = true
+                } else {
+                    fetchModelStatus = "Gagal memuat model"
+                }
+            }
+        },
+        onTestConnection = {
+            isTesting = true
+            testStatus = null
+            scope.launch {
+                val result = vm.testConnection()
+                isTesting = false
+                testStatus = if (result.isSuccess) "Connected" else "Disconnected"
+            }
+        },
+        onDismissModelDropdown = { showModelDropdown = false },
+        onToggleModelDropdown = { if (availableModels.isNotEmpty()) showModelDropdown = !showModelDropdown },
+        getStorageModelForProvider = vm::storageModelFor
+    )
+}
+
+@Composable
+internal fun SettingsScreenContent(
+    providers: List<ProviderConfig>,
+    activeProvider: ProviderConfig,
+    availableModels: List<String>,
+    glossaryCount: Int,
+    activeProjectName: String?,
+    activeProjectGlossaryCount: Int,
+    isDarkTheme: Boolean,
+    isOledTheme: Boolean,
+    apiKeyText: String,
+    baseUrlText: String,
+    modelText: String,
+    isKeyVisible: Boolean,
+    autoSaveHistory: Boolean,
+    temperature: Float,
+    maxTokens: Int,
+    testStatus: String?,
+    isTesting: Boolean,
+    isFetchingModels: Boolean,
+    fetchModelStatus: String?,
+    showModelDropdown: Boolean,
+    onToggleTheme: () -> Unit,
+    onToggleOled: () -> Unit,
+    onSelectProvider: (ProviderConfig) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+    onBaseUrlChange: (String) -> Unit,
+    onModelChange: (String) -> Unit,
+    onToggleKeyVisible: () -> Unit,
+    onAutoSaveChange: (Boolean) -> Unit,
+    onTemperatureChange: (Float) -> Unit,
+    onMaxTokensChange: (Int) -> Unit,
+    onFetchModels: () -> Unit,
+    onTestConnection: () -> Unit,
+    onDismissModelDropdown: () -> Unit,
+    onToggleModelDropdown: () -> Unit,
+    getStorageModelForProvider: (String) -> String?
+) {
+    val isLocalProvider = !activeProvider.requiresApiKey || activeProvider.id in listOf("ollama", "lmstudio")
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -245,13 +359,9 @@ internal fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Theme Settings Section
+        // Theme Settings
         SectionTitle("Tampilan & Tema")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
+        MochiCard {
             Column(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -297,17 +407,12 @@ internal fun SettingsScreen(
         SectionTitle("Provider AI")
         providers.forEach { prov ->
             val isSelected = activeProvider.id == prov.id
-            val currentModel = if (isSelected) modelText else (vm.storageModelFor(prov.id) ?: prov.model)
+            val currentModel = if (isSelected) modelText else (getStorageModelForProvider(prov.id) ?: prov.model)
             ProviderSelectorCard(
                 provider = prov,
                 isSelected = isSelected,
                 currentModel = currentModel,
-                onClick = {
-                    vm.selectProvider(prov)
-                    apiKeyText = vm.apiKey.orEmpty()
-                    baseUrlText = vm.customBaseUrl.orEmpty()
-                    modelText = vm.customModel ?: prov.model
-                }
+                onClick = { onSelectProvider(prov) }
             )
         }
 
@@ -317,52 +422,35 @@ internal fun SettingsScreen(
         SectionTitle("Konfigurasi ${activeProvider.name}")
 
         if (activeProvider.requiresApiKey) {
-            OutlinedTextField(
+            MochiTextField(
                 value = apiKeyText,
-                onValueChange = {
-                    apiKeyText = it
-                    vm.apiKey = it
-                },
+                onValueChange = onApiKeyChange,
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("API Key (${activeProvider.name})") },
                 singleLine = true,
-                visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
-                    IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                    IconButton(onClick = onToggleKeyVisible) {
                         Icon(if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle key")
                     }
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         } else {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-            ) {
-                Text("Provider ini tidak memerlukan API Key (misal: Local Ollama / LM Studio).", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(12.dp))
+            MochiCard {
+                Text("Provider lokal ini tidak memerlukan API Key.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(12.dp))
             }
         }
 
-        OutlinedTextField(
-            value = baseUrlText,
-            onValueChange = {
-                baseUrlText = it
-                vm.customBaseUrl = it
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Base URL Kustom (Opsional)") },
-            placeholder = { Text("Contoh: ${activeProvider.baseUrl}") },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+        // Custom Base URL is strictly hidden for cloud providers and only shown when Ollama or LM Studio is selected
+        if (isLocalProvider) {
+            MochiTextField(
+                value = baseUrlText,
+                onValueChange = onBaseUrlChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Base URL Kustom (Opsional)") },
+                placeholder = { Text("Contoh: ${activeProvider.baseUrl}") },
+                singleLine = true
             )
-        )
+        }
 
         // Model section
         SectionTitle("Pilihan Model AI")
@@ -373,15 +461,12 @@ internal fun SettingsScreen(
         ) {
             ExposedDropdownMenuBox(
                 expanded = showModelDropdown && availableModels.isNotEmpty(),
-                onExpandedChange = { if (availableModels.isNotEmpty()) showModelDropdown = !showModelDropdown },
+                onExpandedChange = { onToggleModelDropdown() },
                 modifier = Modifier.weight(1f)
             ) {
-                OutlinedTextField(
+                MochiTextField(
                     value = modelText,
-                    onValueChange = {
-                        modelText = it
-                        vm.setModelForActiveProvider(it)
-                    },
+                    onValueChange = onModelChange,
                     modifier = Modifier
                         .menuAnchor(MenuAnchorType.PrimaryEditable, true)
                         .fillMaxWidth(),
@@ -391,25 +476,19 @@ internal fun SettingsScreen(
                         if (availableModels.isNotEmpty()) {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown)
                         }
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                    )
+                    }
                 )
                 if (availableModels.isNotEmpty()) {
                     ExposedDropdownMenu(
                         expanded = showModelDropdown,
-                        onDismissRequest = { showModelDropdown = false }
+                        onDismissRequest = onDismissModelDropdown
                     ) {
                         availableModels.forEach { modelName ->
                             DropdownMenuItem(
                                 text = { Text(modelName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                 onClick = {
-                                    modelText = modelName
-                                    vm.setModelForActiveProvider(modelName)
-                                    showModelDropdown = false
+                                    onModelChange(modelName)
+                                    onDismissModelDropdown()
                                 }
                             )
                         }
@@ -417,28 +496,13 @@ internal fun SettingsScreen(
                 }
             }
 
-            Button(
-                onClick = {
-                    isFetchingModels = true
-                    fetchModelStatus = null
-                    scope.launch {
-                        val res = vm.fetchModelsForActiveProvider()
-                        isFetchingModels = false
-                        if (res.isSuccess) {
-                            val list = res.getOrDefault(emptyList())
-                            fetchModelStatus = "Berhasil memuat ${list.size} model!"
-                            if (list.isNotEmpty()) showModelDropdown = true
-                        } else {
-                            fetchModelStatus = "Gagal: ${res.exceptionOrNull()?.message}"
-                        }
-                    }
-                },
+            MochiOutlinedButton(
+                onClick = onFetchModels,
                 enabled = !isFetchingModels,
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                modifier = Modifier.height(52.dp)
             ) {
                 if (isFetchingModels) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 } else {
                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -449,67 +513,46 @@ internal fun SettingsScreen(
 
         if (fetchModelStatus != null) {
             Text(
-                text = fetchModelStatus!!,
+                text = fetchModelStatus,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (fetchModelStatus!!.startsWith("Berhasil")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                color = if (fetchModelStatus.startsWith("Berhasil")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 fontWeight = FontWeight.SemiBold
             )
         }
 
-        // Test connection button
-        Button(
-            onClick = {
-                isTesting = true
-                testStatus = null
-                scope.launch {
-                    val result = vm.testConnection()
-                    isTesting = false
-                    testStatus = if (result.isSuccess) "Koneksi berhasil ✓" else "Koneksi gagal: ${result.exceptionOrNull()?.message}"
-                }
-            },
+        // Test Connection Button (Outlined, not solid CTA)
+        MochiOutlinedButton(
+            onClick = onTestConnection,
             enabled = !isTesting,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp)
+                .height(48.dp)
         ) {
             if (isTesting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Menguji koneksi...", fontWeight = FontWeight.SemiBold)
+                Text("Checking...", fontWeight = FontWeight.SemiBold)
             } else {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Uji Koneksi API", fontWeight = FontWeight.Bold)
+                Text("Tes Koneksi", fontWeight = FontWeight.Bold)
             }
         }
 
         if (testStatus != null) {
-            val isSuccess = testStatus!!.startsWith("Koneksi berhasil")
-            Surface(
-                color = if (isSuccess) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = testStatus!!,
-                    modifier = Modifier.padding(10.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isSuccess) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            val isConnected = testStatus == "Connected"
+            MochiChip(
+                text = if (isConnected) "Status: Connected ✓" else "Status: Disconnected ✗",
+                containerColor = if (isConnected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                contentColor = if (isConnected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+            )
         }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
         // Glossary integration
         SectionTitle("Integrasi Glosarium & Context")
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
+        MochiCard {
             Column(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -520,16 +563,13 @@ internal fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Total Istilah Glosarium", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text("${glossaryList.size} Istilah", fontWeight = FontWeight.Bold) }
-                    )
+                    MochiChip(text = "$glossaryCount Istilah")
                 }
                 Text(
-                    text = if (activeProject != null && activeProject!!.glossaryIds.isNotEmpty()) {
-                        "Proyek Aktif ('${activeProject!!.name}') menautkan ${activeProject!!.glossaryIds.size} istilah spesifik."
+                    text = if (activeProjectName != null && activeProjectGlossaryCount > 0) {
+                        "Proyek Aktif ('$activeProjectName') menautkan $activeProjectGlossaryCount istilah spesifik."
                     } else {
-                        "Seluruh ${glossaryList.size} istilah glosarium umum akan otomatis disuntikkan ke dalam instruksi terjemahan AI."
+                        "Seluruh $glossaryCount istilah glosarium umum akan otomatis disuntikkan ke dalam instruksi terjemahan AI."
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -551,10 +591,7 @@ internal fun SettingsScreen(
             }
             Switch(
                 checked = autoSaveHistory,
-                onCheckedChange = {
-                    autoSaveHistory = it
-                    vm.setAutoSave(it)
-                }
+                onCheckedChange = onAutoSaveChange
             )
         }
 
@@ -563,22 +600,13 @@ internal fun SettingsScreen(
         // Generation parameters
         SectionTitle("Parameter Generasi AI")
         Text(
-            "Berlaku untuk semua provider (Gemini, OpenAI, OpenRouter, lokal).",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
             "Temperature: ${String.format(java.util.Locale.US, "%.1f", temperature)} " +
                     if (temperature <= 0.3f) "(konsisten/presisi)" else "(kreatif/ekspresif)",
             style = MaterialTheme.typography.bodySmall
         )
         Slider(
             value = temperature,
-            onValueChange = {
-                temperature = it
-                vm.generationTemperature = it
-            },
+            onValueChange = onTemperatureChange,
             valueRange = 0f..1.5f
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -590,11 +618,22 @@ internal fun SettingsScreen(
             value = maxTokens.toFloat(),
             onValueChange = {
                 val v = (it.toInt() / 256) * 256
-                maxTokens = v
-                vm.generationMaxTokens = v
+                onMaxTokensChange(v)
             },
             valueRange = 1024f..16384f
         )
+
+        // Single Solid Emerald Primary CTA Button (Max 1 per screen)
+        MochiButton(
+            onClick = { /* Settings auto-saved on change */ },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Simpan Provider", fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -610,47 +649,116 @@ private fun ProviderSelectorCard(
     currentModel: String,
     onClick: () -> Unit
 ) {
-    if (isSelected) {
-        OutlinedCard(
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
-            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+    MochiCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            ProviderCardContent(provider, currentModel, true)
-        }
-    } else {
-        OutlinedCard(
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.outlinedCardColors()
-        ) {
-            ProviderCardContent(provider, currentModel, false)
+            RadioButton(selected = isSelected, onClick = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(provider.name, fontWeight = FontWeight.Bold)
+                if (isSelected) {
+                    Text("Model: $currentModel • ${provider.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (!provider.requiresApiKey) {
+                MochiChip(text = "Lokal")
+            }
         }
     }
 }
 
+@Preview(name = "Settings Screen - Light Theme", showBackground = true)
 @Composable
-private fun ProviderCardContent(provider: ProviderConfig, currentModel: String, isSelected: Boolean) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(selected = isSelected, onClick = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(provider.name, fontWeight = FontWeight.Bold)
-            if (isSelected) {
-                Text("Model: $currentModel • ${provider.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        if (!provider.requiresApiKey) {
-            SuggestionChip(
-                onClick = {},
-                label = { Text(" Lokal", fontSize = 10.sp) }
-            )
-        }
+fun PreviewSettingsScreenLight() {
+    MochiAppTheme(darkTheme = false, dynamicColor = false) {
+        SettingsScreenContent(
+            providers = BuiltIns.providers,
+            activeProvider = BuiltIns.providers.first(),
+            availableModels = emptyList(),
+            glossaryCount = 12,
+            activeProjectName = null,
+            activeProjectGlossaryCount = 0,
+            isDarkTheme = false,
+            isOledTheme = false,
+            apiKeyText = "••••••••",
+            baseUrlText = "",
+            modelText = "gemini-1.5-pro-latest",
+            isKeyVisible = false,
+            autoSaveHistory = true,
+            temperature = 0.3f,
+            maxTokens = 4096,
+            testStatus = "Connected",
+            isTesting = false,
+            isFetchingModels = false,
+            fetchModelStatus = null,
+            showModelDropdown = false,
+            onToggleTheme = {},
+            onToggleOled = {},
+            onSelectProvider = {},
+            onApiKeyChange = {},
+            onBaseUrlChange = {},
+            onModelChange = {},
+            onToggleKeyVisible = {},
+            onAutoSaveChange = {},
+            onTemperatureChange = {},
+            onMaxTokensChange = {},
+            onFetchModels = {},
+            onTestConnection = {},
+            onDismissModelDropdown = {},
+            onToggleModelDropdown = {},
+            getStorageModelForProvider = { null }
+        )
+    }
+}
+
+@Preview(name = "Settings Screen - Dark Theme", showBackground = true)
+@Composable
+fun PreviewSettingsScreenDark() {
+    MochiAppTheme(darkTheme = true, dynamicColor = false) {
+        SettingsScreenContent(
+            providers = BuiltIns.providers,
+            activeProvider = BuiltIns.providers.first(),
+            availableModels = emptyList(),
+            glossaryCount = 12,
+            activeProjectName = null,
+            activeProjectGlossaryCount = 0,
+            isDarkTheme = true,
+            isOledTheme = false,
+            apiKeyText = "••••••••",
+            baseUrlText = "",
+            modelText = "gemini-1.5-pro-latest",
+            isKeyVisible = false,
+            autoSaveHistory = true,
+            temperature = 0.3f,
+            maxTokens = 4096,
+            testStatus = "Connected",
+            isTesting = false,
+            isFetchingModels = false,
+            fetchModelStatus = null,
+            showModelDropdown = false,
+            onToggleTheme = {},
+            onToggleOled = {},
+            onSelectProvider = {},
+            onApiKeyChange = {},
+            onBaseUrlChange = {},
+            onModelChange = {},
+            onToggleKeyVisible = {},
+            onAutoSaveChange = {},
+            onTemperatureChange = {},
+            onMaxTokensChange = {},
+            onFetchModels = {},
+            onTestConnection = {},
+            onDismissModelDropdown = {},
+            onToggleModelDropdown = {},
+            getStorageModelForProvider = { null }
+        )
     }
 }
