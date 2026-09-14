@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="com_google_android_gms_fonts_certs">
+        <item>@array/com_google_android_gms_fonts_certs_dev</item>
+        <item>@array/com_google_android_gms_fonts_certs_prod</item>
+    </array>
+    <string-array name="com_google_android_gms_fonts_certs_dev">
+        <item>
+            MII3fQIBAzCBygUJAzCBygUAMIG9MIG6MIG3AgEAMIGpMA0GCSqGSIb3DQEBCwUAMI
+            HKMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBgGA1UEBxMRTW91
+            bnRhaW4gVmlldzEVMBMGA1UEChMMR29vZ2xlIEluYy4xEDAOBgNVBAsTB0FuZHJvaWQx
+            EDAOBgNVBAMTB0FuZHJvaWQxITAfBgkqhkiG9w0BCQEWEmFuZHJvaWRAZ29vZ2xlLmNv
+            bTAeFw0wODEwMjIyMjM2MzdaFw0zNzA2MDgyMjM2MzdaMIHKMQswCQYDVQQGEwJVUzET
+            MBEGA1UECBMKQ2FsaWZvcm5pYTEUMBgGA1UEBxMRTW91bnRhaW4gVmlldzEVMBMGA1UE
+            ChMMR29vZ2xlIEluYy4xEDAOBgNVBAsTB0FuZHJvaWQxEDAOBgNVBAMTB0FuZHJvaWQx
+            ITAfBgkqhkiG9w0BCQEWEmFuZHJvaWRAZ29vZ2xlLmNvbTCCASIwDQYJKoZIhvcNAQE
+            BBQADggEPADCCAQoCggEBAACOas/
+        </item>
+    </string-array>
+    <string-array name="com_google_android_gms_fonts_certs_prod">
+        <item>
+            MIIEqDCCA5CgAwIBAgIJAN2JY3O1+EBAMA0GCSqGSIb3DQEBCwUAMIGUMQswCQYD
+            VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEUMBgGA1UEBxMRTW91bnRhaW4g
+            VmlldzEVMBMGA1UEChMMR29vZ2xlIEluYy4xEDAOBgNVBAsTB0FuZHJvaWQxJTAj
+            BgNVBAMTHGFuZHJvaWQuY2VydGlmaWNhdGVzLmdvb2dsZS5jb20wHhcNMTEwNDE1
+            MTk0MTM3WhcNMzYwNDAyMTk0MTM3WjCBlDELMAkGA1UEBhMCVVMxEzARBgNVBAgT
+            CkNhbGlmb3JuaWExFDASBgNVBAcTC01vdW50YWluIFZpZXcxFTATBgNVBAoTDEdv
+            b2dsZSBJbmMuMRAwDgYDVQQLEwdBbmRyb2lkMSUwIwYDVQQDExhhbmRyb2lkLmNl
+            cnRpZmljYXRlcy5nb29nbGUuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+            CgKCAQEAu
+        </item>
+    </string-array>
+</resources>

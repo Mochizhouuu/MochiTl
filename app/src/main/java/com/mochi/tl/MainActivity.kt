@@ -9,9 +9,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,21 +31,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mochi.tl.designsystem.MochiAppTheme
+import com.mochi.tl.designsystem.components.*
 import kotlinx.coroutines.launch
-
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 
 class MainActivity : ComponentActivity() {
     private val vm: MochiViewModel by viewModels()
@@ -48,19 +46,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var isDarkTheme by remember { mutableStateOf(false) }
-            var isOledTheme by remember { mutableStateOf(false) }
+            var isDarkTheme by remember { mutableStateOf(true) }
 
-            MochiAppTheme(darkTheme = isDarkTheme, isOledMode = isOledTheme) {
+            MochiAppTheme(darkTheme = isDarkTheme) {
                 LaunchedEffect(Unit) {
                     vm.loadInitialData()
                 }
                 MochiApp(
                     vm = vm,
                     isDarkTheme = isDarkTheme,
-                    isOledTheme = isOledTheme,
-                    onToggleTheme = { isDarkTheme = !isDarkTheme },
-                    onToggleOled = { isOledTheme = !isOledTheme }
+                    onToggleTheme = { isDarkTheme = !isDarkTheme }
                 )
             }
         }
@@ -99,22 +94,16 @@ internal enum class Screen { HOME, TEXT, FILE, PROJECTS, PROMPTS, GLOSSARY, HIST
 fun MochiApp(
     vm: MochiViewModel,
     isDarkTheme: Boolean,
-    isOledTheme: Boolean,
-    onToggleTheme: () -> Unit,
-    onToggleOled: () -> Unit
+    onToggleTheme: () -> Unit
 ) {
     var screen by remember { mutableStateOf(Screen.HOME) }
     var docPageTarget by remember { mutableIntStateOf(0) }
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     val activeProject by vm.activeProject.collectAsState()
     val context = LocalContext.current
     var backPressedTime by remember { mutableLongStateOf(0L) }
 
     BackHandler(enabled = true) {
-        if (drawerState.isOpen) {
-            scope.launch { drawerState.close() }
-        } else if (screen != Screen.HOME) {
+        if (screen != Screen.HOME) {
             screen = Screen.HOME
         } else {
             val currentTime = System.currentTimeMillis()
@@ -127,253 +116,88 @@ fun MochiApp(
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                drawerTonalElevation = 4.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(16.dp)
-                ) {
-                    // Drawer Header
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp, top = 8.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+    Scaffold(
+        topBar = {
+            MochiTopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = screenTitle(screen),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        if (activeProject != null && screen != Screen.HOME) {
                             Text(
-                                text = "MochiTL",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
+                                text = "Proyek: ${activeProject!!.name}",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            Text(
-                                text = "AI Translation Workspace",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
-
-                    if (activeProject != null) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Book,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Proyek Aktif",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
-                                    )
-                                    Text(
-                                        text = activeProject!!.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    val drawerMenuItems = listOf(
-                        Screen.HOME to ("Beranda" to Icons.Default.Home),
-                        Screen.TEXT to ("Terjemahkan Teks" to Icons.Default.Language),
-                        Screen.FILE to ("Terjemahkan File" to Icons.Default.Description),
-                        Screen.PROJECTS to ("Proyek Terjemahan" to Icons.Default.Book),
-                        Screen.PROMPTS to ("Pengelola Prompt" to Icons.AutoMirrored.Filled.Send),
-                        Screen.GLOSSARY to ("Glosarium Istilah" to Icons.AutoMirrored.Filled.Comment),
-                        Screen.HISTORY to ("Riwayat Terjemahan" to Icons.Default.History),
-                        Screen.SETTINGS to ("Pengaturan AI" to Icons.Default.Settings),
-                        Screen.ABOUT to ("Dokumentasi & Panduan" to Icons.Default.Info)
-                    )
-
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(drawerMenuItems) { (targetScreen, pair) ->
-                            val (label, icon) = pair
-                            NavigationDrawerItem(
-                                label = { Text(label, style = MaterialTheme.typography.labelLarge) },
-                                selected = screen == targetScreen,
-                                onClick = {
-                                    screen = targetScreen
-                                    scope.launch { drawerState.close() }
-                                },
-                                icon = { Icon(icon, contentDescription = null) },
-                                modifier = Modifier.padding(vertical = 2.dp),
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    // Theme toggles
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (isDarkTheme) "Mode Gelap" else "Mode Terang",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                actions = {
+                    IconButton(onClick = onToggleTheme) {
+                        Icon(
+                            if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = "Toggle Theme",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(
-                                if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Toggle Theme",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    if (isDarkTheme) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "OLED True Black",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Switch(
-                                checked = isOledTheme,
-                                onCheckedChange = { onToggleOled() }
-                            )
-                        }
                     }
                 }
+            )
+        },
+        bottomBar = {
+            MochiNavigationBar {
+                MochiNavigationBarItem(
+                    selected = screen == Screen.HOME || screen == Screen.TEXT || screen == Screen.FILE,
+                    onClick = { screen = Screen.TEXT },
+                    icon = { Icon(Icons.Default.Translate, contentDescription = "Terjemahkan") },
+                    label = { Text("Terjemah", style = MaterialTheme.typography.labelMedium) }
+                )
+                MochiNavigationBarItem(
+                    selected = screen == Screen.PROJECTS,
+                    onClick = { screen = Screen.PROJECTS },
+                    icon = { Icon(Icons.Default.Book, contentDescription = "Proyek") },
+                    label = { Text("Proyek", style = MaterialTheme.typography.labelMedium) }
+                )
+                MochiNavigationBarItem(
+                    selected = screen == Screen.PROMPTS,
+                    onClick = { screen = Screen.PROMPTS },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Prompt") },
+                    label = { Text("Prompt", style = MaterialTheme.typography.labelMedium) }
+                )
+                MochiNavigationBarItem(
+                    selected = screen == Screen.GLOSSARY,
+                    onClick = { screen = Screen.GLOSSARY },
+                    icon = { Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "Glosarium") },
+                    label = { Text("Glosarium", style = MaterialTheme.typography.labelMedium) }
+                )
+                MochiNavigationBarItem(
+                    selected = screen == Screen.SETTINGS,
+                    onClick = { screen = Screen.SETTINGS },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "Pengaturan") },
+                    label = { Text("Setelan", style = MaterialTheme.typography.labelMedium) }
+                )
             }
         }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    title = {
-                        Column {
-                            Text(
-                                text = screenTitle(screen),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            if (activeProject != null && screen != Screen.HOME) {
-                                Text(
-                                    text = "Proyek: ${activeProject!!.name}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu Drawer")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onToggleTheme) {
-                            Icon(
-                                if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                contentDescription = "Toggle Theme",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                )
-            },
-            bottomBar = {
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    tonalElevation = 6.dp
-                ) {
-                    NavigationBarItem(
-                        selected = screen == Screen.HOME,
-                        onClick = { screen = Screen.HOME },
-                        icon = { Icon(Icons.Default.Home, contentDescription = "Beranda") },
-                        label = { Text("Beranda", style = MaterialTheme.typography.labelMedium) }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.TEXT || screen == Screen.FILE,
-                        onClick = { screen = Screen.TEXT },
-                        icon = { Icon(Icons.Default.Translate, contentDescription = "Terjemahkan") },
-                        label = { Text("Terjemah", style = MaterialTheme.typography.labelMedium) }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.PROJECTS,
-                        onClick = { screen = Screen.PROJECTS },
-                        icon = { Icon(Icons.Default.Book, contentDescription = "Proyek") },
-                        label = { Text("Proyek", style = MaterialTheme.typography.labelMedium) }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.PROMPTS || screen == Screen.GLOSSARY,
-                        onClick = { screen = Screen.PROMPTS },
-                        icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Prompt") },
-                        label = { Text("Prompt", style = MaterialTheme.typography.labelMedium) }
-                    )
-                    NavigationBarItem(
-                        selected = screen == Screen.SETTINGS,
-                        onClick = { screen = Screen.SETTINGS },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "Pengaturan") },
-                        label = { Text("Pengaturan", style = MaterialTheme.typography.labelMedium) }
-                    )
-                }
-            }
-        ) { padding ->
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                when (screen) {
-                    Screen.HOME -> HomeScreen(vm) { screen = it }
-                    Screen.TEXT -> TextTranslationScreen(vm, onSwitchToFile = { screen = Screen.FILE })
+    ) { padding ->
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            AnimatedContent(
+                targetState = screen,
+                transitionSpec = {
+                    (fadeIn() + slideInVertically { 20 }).togetherWith(fadeOut() + slideOutVertically { -20 })
+                },
+                label = "screenTransition"
+            ) { targetScreen ->
+                when (targetScreen) {
+                    Screen.HOME, Screen.TEXT -> TextTranslationScreen(vm, onSwitchToFile = { screen = Screen.FILE })
                     Screen.FILE -> FileTranslationScreen(vm, onSwitchToText = { screen = Screen.TEXT })
                     Screen.PROJECTS -> ProjectsScreen(vm)
                     Screen.PROMPTS -> PromptScreen(
@@ -395,9 +219,7 @@ fun MochiApp(
                     Screen.SETTINGS -> SettingsScreen(
                         vm = vm,
                         isDarkTheme = isDarkTheme,
-                        isOledTheme = isOledTheme,
-                        onToggleTheme = onToggleTheme,
-                        onToggleOled = onToggleOled
+                        onToggleTheme = onToggleTheme
                     )
                     Screen.ABOUT -> DocumentationScreen(initialPage = docPageTarget)
                 }
@@ -406,9 +228,8 @@ fun MochiApp(
     }
 }
 
-
 @Composable
-private fun ProjectsScreen(vm: MochiViewModel) {
+internal fun ProjectsScreen(vm: MochiViewModel) {
     val projects by vm.projects.collectAsState()
     val activeProject by vm.activeProject.collectAsState()
     val prompts by vm.prompts.collectAsState()
@@ -418,6 +239,45 @@ private fun ProjectsScreen(vm: MochiViewModel) {
     var showDialog by remember { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<TranslationProject?>(null) }
 
+    ProjectsScreenContent(
+        projects = projects,
+        activeProject = activeProject,
+        prompts = prompts,
+        providers = providers,
+        glossaryList = glossaryList,
+        onAddProject = { editingProject = null; showDialog = true },
+        onEditProject = { proj -> editingProject = proj; showDialog = true },
+        onSelectProject = vm::selectProject,
+        onDeleteProject = vm::deleteProject
+    )
+
+    if (showDialog) {
+        ProjectEditDialog(
+            project = editingProject,
+            prompts = prompts,
+            providers = providers,
+            glossaryList = glossaryList,
+            onDismiss = { showDialog = false },
+            onSave = { newProj ->
+                vm.saveProject(newProj)
+                showDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+internal fun ProjectsScreenContent(
+    projects: List<TranslationProject>,
+    activeProject: TranslationProject?,
+    prompts: List<PromptTemplate>,
+    providers: List<ProviderConfig>,
+    glossaryList: List<GlossaryEntry>,
+    onAddProject: () -> Unit,
+    onEditProject: (TranslationProject) -> Unit,
+    onSelectProject: (TranslationProject?) -> Unit,
+    onDeleteProject: (String) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -438,10 +298,8 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = { editingProject = null; showDialog = true },
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            MochiOutlinedButton(
+                onClick = onAddProject
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -455,7 +313,18 @@ private fun ProjectsScreen(vm: MochiViewModel) {
         ) {
             if (projects.isEmpty()) {
                 item {
-                    Text("Belum ada proyek dibuat. Klik 'Tambah Proyek' untuk membuat baru.", style = MaterialTheme.typography.bodyMedium)
+                    MochiEmptyState(
+                        icon = Icons.Default.Book,
+                        title = "Belum Ada Proyek",
+                        description = "Belum ada proyek dibuat. Klik Tambah Proyek untuk membuat baru.",
+                        action = {
+                            MochiButton(onClick = onAddProject) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Tambah Proyek")
+                            }
+                        }
+                    )
                 }
             }
 
@@ -464,11 +333,7 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                 val promptName = prompts.find { it.id == proj.promptTemplateId }?.name ?: "Default Prompt"
                 val providerName = providers.find { it.id == proj.providerId }?.name ?: proj.providerId
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = if (isActive) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
+                MochiCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -485,7 +350,11 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                             )
                             if (isActive) {
                                 Spacer(modifier = Modifier.width(8.dp))
-                                SuggestionChip(onClick = {}, label = { Text("AKTIF", fontWeight = FontWeight.Bold) })
+                                MochiChip(
+                                    text = "AKTIF",
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                             }
                         }
 
@@ -504,16 +373,14 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (!isActive) {
-                                FilledTonalButton(
-                                    onClick = { vm.selectProject(proj) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                MochiOutlinedButton(
+                                    onClick = { onSelectProject(proj) },
+                                    modifier = Modifier.height(36.dp)
                                 ) { Text("Aktifkan Proyek") }
                             } else {
-                                OutlinedButton(
-                                    onClick = { vm.selectProject(null) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                MochiOutlinedButton(
+                                    onClick = { onSelectProject(null) },
+                                    modifier = Modifier.height(36.dp)
                                 ) { Text("Nonaktifkan") }
                             }
 
@@ -521,10 +388,10 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                IconButton(onClick = { editingProject = proj; showDialog = true }) {
+                                IconButton(onClick = { onEditProject(proj) }) {
                                     Icon(Icons.Default.Edit, contentDescription = "Edit Proyek")
                                 }
-                                IconButton(onClick = { vm.deleteProject(proj.id) }) {
+                                IconButton(onClick = { onDeleteProject(proj.id) }) {
                                     Icon(Icons.Default.Delete, contentDescription = "Hapus Proyek", tint = MaterialTheme.colorScheme.error)
                                 }
                             }
@@ -533,20 +400,6 @@ private fun ProjectsScreen(vm: MochiViewModel) {
                 }
             }
         }
-    }
-
-    if (showDialog) {
-        ProjectEditDialog(
-            project = editingProject,
-            prompts = prompts,
-            providers = providers,
-            glossaryList = glossaryList,
-            onDismiss = { showDialog = false },
-            onSave = { newProj ->
-                vm.saveProject(newProj)
-                showDialog = false
-            }
-        )
     }
 }
 
@@ -609,30 +462,6 @@ private fun PromptScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Tab Switcher between Prompt & Glossary
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            SegmentedButton(
-                selected = true,
-                onClick = {},
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Prompt Template", style = MaterialTheme.typography.labelMedium)
-            }
-            SegmentedButton(
-                selected = false,
-                onClick = onNavigateToGlossary,
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Glosarium Istilah", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -651,18 +480,10 @@ private fun PromptScreen(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick = { vm.resetPromptsToDefault() },
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                ) {
+                MochiOutlinedButton(onClick = { vm.resetPromptsToDefault() }) {
                     Text("Reset")
                 }
-                Button(
-                    onClick = { editingPrompt = null; showEditDialog = true },
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                ) {
+                MochiOutlinedButton(onClick = { editingPrompt = null; showEditDialog = true }) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Tambah", fontWeight = FontWeight.SemiBold)
@@ -670,51 +491,10 @@ private fun PromptScreen(
             }
         }
 
-        // Compact Banner to navigate to Documentation
-        OutlinedCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            onClick = { onNavigateToDocumentation(3) }
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.HelpOutline,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Panduan Prompt Custom",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                TextButton(
-                    onClick = { onNavigateToDocumentation(3) },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text("Lihat Panduan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
-        // Search & Backup Controls
-        OutlinedTextField(
+        MochiTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
             placeholder = { Text("Cari prompt...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true
@@ -724,22 +504,18 @@ private fun PromptScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
+            MochiOutlinedButton(
                 onClick = { exportLauncher.launch("prompt_mochitl.json") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Ekspor JSON", fontSize = 13.sp)
             }
 
-            OutlinedButton(
+            MochiOutlinedButton(
                 onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -753,19 +529,15 @@ private fun PromptScreen(
         ) {
             if (filteredPrompts.isEmpty()) {
                 item {
-                    Text(
-                        if (searchQuery.isBlank()) "Belum ada prompt. Tambahkan atau tekan Reset untuk memulai."
-                        else "Tidak ada prompt yang cocok dengan pencarian.",
-                        style = MaterialTheme.typography.bodyMedium
+                    MochiEmptyState(
+                        icon = Icons.AutoMirrored.Filled.Send,
+                        title = "Tidak Ada Prompt",
+                        description = if (searchQuery.isBlank()) "Belum ada prompt. Tambahkan atau tekan Reset untuk memulai." else "Tidak ada prompt yang cocok dengan pencarian."
                     )
                 }
             }
             items(filteredPrompts) { p ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
+                MochiCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -781,10 +553,7 @@ private fun PromptScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            SuggestionChip(
-                                onClick = {},
-                                label = { Text(if (p.isBuiltIn) "Built-in" else "Kustom", fontWeight = FontWeight.Medium) }
-                            )
+                            MochiChip(text = if (p.isBuiltIn) "Built-in" else "Kustom")
                         }
 
                         Text(p.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -798,10 +567,7 @@ private fun PromptScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            TextButton(
-                                onClick = { viewingSamplePrompt = p },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
+                            MochiGhostButton(onClick = { viewingSamplePrompt = p }) {
                                 Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Lihat Detail Template", fontSize = 12.sp)
@@ -912,30 +678,6 @@ private fun GlossaryScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Tab Switcher between Prompt & Glossary
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            SegmentedButton(
-                selected = false,
-                onClick = onNavigateToPrompts,
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Prompt Template", style = MaterialTheme.typography.labelMedium)
-            }
-            SegmentedButton(
-                selected = true,
-                onClick = {},
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Glosarium Istilah", style = MaterialTheme.typography.labelMedium)
-            }
-        }
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -950,11 +692,7 @@ private fun GlossaryScreen(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = { editingEntry = null; showDialog = true },
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-            ) {
+            MochiOutlinedButton(onClick = { editingEntry = null; showDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Tambah Istilah", fontWeight = FontWeight.SemiBold)
@@ -965,22 +703,18 @@ private fun GlossaryScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
+            MochiOutlinedButton(
                 onClick = { exportLauncher.launch("glosarium_mochitl.json") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Ekspor JSON", fontSize = 13.sp)
             }
 
-            OutlinedButton(
+            MochiOutlinedButton(
                 onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
@@ -988,11 +722,10 @@ private fun GlossaryScreen(
             }
         }
 
-        OutlinedTextField(
+        MochiTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
             placeholder = { Text("Cari istilah...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
@@ -1018,20 +751,16 @@ private fun GlossaryScreen(
         ) {
             if (filtered.isEmpty()) {
                 item {
-                    Text(
-                        if (glossaryList.isEmpty()) "Belum ada istilah glosarium. Tambahkan istilah nama karakter, jurus, atau tempat."
-                        else "Tidak ada istilah yang cocok dengan \"$searchQuery\".",
-                        style = MaterialTheme.typography.bodyMedium
+                    MochiEmptyState(
+                        icon = Icons.AutoMirrored.Filled.Comment,
+                        title = "Tidak Ada Istilah",
+                        description = if (glossaryList.isEmpty()) "Belum ada istilah glosarium. Tambahkan istilah nama karakter, jurus, atau tempat." else "Tidak ada istilah yang cocok dengan \"$searchQuery\"."
                     )
                 }
             }
 
             items(filtered) { entry ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) {
+                MochiCard(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
