@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.mochi.tl.designsystem.MochiAppTheme
 import com.mochi.tl.designsystem.components.*
@@ -141,7 +142,7 @@ internal fun OnboardingScreen(
                         ) {
                             RadioButton(selected = isSelected, onClick = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(prov.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text(prov.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (!prov.requiresApiKey) {
                                 MochiChip(text = "Lokal")
                             }
@@ -209,7 +210,7 @@ internal fun OnboardingScreen(
                 onClick = onCompleteOnboarding,
                 modifier = Modifier.weight(2f)
             ) {
-                Text("Lanjutkan ke Workspace", fontWeight = FontWeight.Bold)
+                Text("Lanjutkan ke Workspace", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
             }

@@ -363,7 +363,7 @@ internal fun ProjectsScreenContent(
                         }
 
                         val glossaryInfo = if (proj.glossaryIds.isEmpty()) "Semua (${glossaryList.size})" else "${proj.glossaryIds.size} terikat"
-                        Text("Prompt: $promptName • Provider: $providerName • Target: ${proj.targetLanguage} • Glosarium: $glossaryInfo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Prompt: $promptName • Provider: $providerName • Target: ${proj.targetLanguage} • Glosarium: $glossaryInfo", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, softWrap = true)
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
@@ -556,7 +556,7 @@ private fun PromptScreen(
                             MochiChip(text = if (p.isBuiltIn) "Built-in" else "Kustom")
                         }
 
-                        Text(p.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(p.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         Text(p.content, style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
 

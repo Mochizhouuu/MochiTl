@@ -663,7 +663,7 @@ private fun ProviderSelectorCard(
             RadioButton(selected = isSelected, onClick = null)
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(provider.name, fontWeight = FontWeight.Bold)
+                Text(provider.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (isSelected) {
                     Text("Model: $currentModel • ${provider.baseUrl}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
