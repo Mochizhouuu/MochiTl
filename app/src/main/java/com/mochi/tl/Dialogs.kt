@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * Kumpulan dialog edit (Project, Prompt, Glossary).
@@ -180,7 +181,10 @@ internal fun ProjectEditDialog(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "${item.source} ➔ ${item.target}",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodySmall,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
                                     )
                                 }
                             }
@@ -227,9 +231,9 @@ internal fun PromptSampleViewerDialog(
         shape = RoundedCornerShape(16.dp),
         title = {
             Column {
-                Text(text = "Referensi Template: ${prompt.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(text = "Referensi Template: ${prompt.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (prompt.description.isNotBlank()) {
-                    Text(text = prompt.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = prompt.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, softWrap = true)
                 }
             }
         },

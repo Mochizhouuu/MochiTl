@@ -394,20 +394,23 @@ internal fun TextTranslationScreenContent(
                 ) {
                     val charCount = state.input.length
                     Text(
-                        text = "Teks Sumber ($charCount / 5.000 karakter)",
+                        text = "Teks Sumber ($charCount / 5.000)",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (state.input.isNotBlank()) {
                             MochiGhostButton(onClick = { onSetInput("") }) {
-                                Text("Bersihkan", fontSize = 11.sp)
+                                Text("Bersihkan", fontSize = 11.sp, maxLines = 1)
                             }
                         }
                         MochiOutlinedButton(onClick = onPasteText) {
-                            Text("Tempel", fontSize = 11.sp)
+                            Text("Tempel", fontSize = 11.sp, maxLines = 1)
                         }
                     }
                 }
@@ -551,15 +554,18 @@ internal fun TextTranslationScreenContent(
                         text = "Hasil Terjemahan AI",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     if (state.output.isNotBlank()) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                             MochiOutlinedButton(onClick = { onCopyText(state.output) }) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = "Salin Teks", modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Salin", fontSize = 11.sp)
+                                Text("Salin", fontSize = 11.sp, maxLines = 1)
                             }
                             MochiOutlinedButton(onClick = { onShareText(state.output) }) {
                                 Icon(Icons.Default.Share, contentDescription = "Bagikan", modifier = Modifier.size(14.dp))
