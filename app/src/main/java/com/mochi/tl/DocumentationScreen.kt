@@ -55,7 +55,7 @@ internal fun DocumentationScreen(initialPage: Int = 0) {
                     "• Server AI Lokal (Ollama & LM Studio):\n" +
                     "  Dapat dijalankan secara offline atau lokal tanpa API Key! Atur Base URL ke http://10.0.2.2:11434 (Emulator) atau IP PC lokal Anda (misal: http://192.168.1.50:11434) untuk Ollama / LM Studio.\n\n" +
                     "• Fitur Uji Koneksi:\n" +
-                    "  Sebelum melakukan terjemahan panjang, tekan tombol 'Uji Koneksi API' untuk meyakinkan bahwa endpoint server dan API Key siap digunakan."
+                    "  Sebelum melakukan terjemahan panjang, tekan tombol 'Tes Koneksi' untuk meyakinkan bahwa endpoint server dan API Key siap digunakan."
         ),
         Triple(
             "3. Manajemen Proyek Terjemahan",

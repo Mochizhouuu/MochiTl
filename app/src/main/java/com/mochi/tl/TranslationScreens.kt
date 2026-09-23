@@ -32,6 +32,9 @@ import androidx.compose.ui.unit.sp
 import com.mochi.tl.designsystem.MochiAppTheme
 import com.mochi.tl.designsystem.components.*
 import com.mochi.tl.designsystem.typography.MonospaceBodyMedium
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun TextTranslationScreen(
@@ -634,13 +637,30 @@ internal fun FileTranslationScreen(
 
     var fileName by remember { mutableStateOf<String?>(null) }
     var fileText by remember { mutableStateOf("") }
+    var isLoadingFile by remember { mutableStateOf(false) }
+    var fileError by remember { mutableStateOf<String?>(null) }
     var sourceLanguage by remember { mutableStateOf(LanguageOptions.AUTO_DETECT) }
     var targetLanguage by remember { mutableStateOf("Indonesia") }
+    val scope = rememberCoroutineScope()
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
-            fileName = it.lastPathSegment ?: "Dokumen"
-            fileText = FileParser.readText(context, it)
+            isLoadingFile = true
+            fileError = null
+            scope.launch {
+                try {
+                    val name = withContext(Dispatchers.IO) { FileParser.getDisplayName(context, it) }
+                    val text = withContext(Dispatchers.IO) { FileParser.readText(context, it) }
+                    fileName = name
+                    fileText = text
+                } catch (e: Exception) {
+                    fileError = e.message ?: "Gagal membaca file"
+                    fileText = ""
+                    fileName = null
+                } finally {
+                    isLoadingFile = false
+                }
+            }
         }
     }
 
@@ -765,7 +785,24 @@ internal fun FileTranslationScreen(
         ) {
             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(if (fileName == null) "Pilih Dokumen Teks" else "📄 $fileName", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (fileName == null) "Pilih Dokumen Teks" else "📄 $fileName", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+
+        if (isLoadingFile) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+            )
+        }
+
+        if (fileError != null) {
+            Text(
+                text = fileError ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         if (fileText.isNotBlank()) {
@@ -779,7 +816,15 @@ internal fun FileTranslationScreen(
                     Text("Ukuran: ${fileText.length} karakter", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Text("Pratinjau teks asli:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(fileText.take(300) + if (fileText.length > 300) "..." else "", style = MaterialTheme.typography.bodySmall)
+                    val previewScroll = rememberScrollState()
+                    Text(
+                        text = fileText,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 160.dp)
+                            .verticalScroll(previewScroll)
+                    )
                 }
             }
 
@@ -854,15 +899,21 @@ internal fun FileTranslationScreen(
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Hasil Terjemahan", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                     SelectionContainer {
+                        val outputScroll = rememberScrollState()
                         Text(
-                            text = state.output.take(800) + if (state.output.length > 800) "\n..." else "",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = state.output,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 420.dp)
+                                .verticalScroll(outputScroll)
                         )
                     }
                     HorizontalDivider()
                     MochiOutlinedButton(
                         onClick = {
-                            val name = "terjemahan_${fileName?.removeSuffix(".txt") ?: "file"}.txt"
+                            val base = fileName?.substringBeforeLast('.', fileName) ?: "file"
+                            val name = "terjemahan_$base.txt"
                             (context as? MainActivity)?.exportText(name, state.output)
                         },
                         modifier = Modifier

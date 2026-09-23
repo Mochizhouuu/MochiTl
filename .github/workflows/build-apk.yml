@@ -9,6 +9,10 @@ on:
     tags: ["v*"]
   workflow_dispatch: {}
 
+# softprops/action-gh-release membutuhkan izin menulis contents.
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build release APK
@@ -23,12 +27,8 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      # Proyek ini belum menyertakan gradle-wrapper.jar (biner) di repo.
-      # setup-gradle menyediakan Gradle langsung di runner, jadi build tetap
-      # jalan lewat perintah `gradle` walau gradlew belum lengkap. Setelah
-      # kamu generate wrapper sendiri via Termux (lihat PANDUAN), workflow
-      # ini otomatis tetap bekerja karena setup-gradle akan memakai wrapper
-      # kalau ada.
+      # gradle-wrapper.jar sudah ada di repo; setup-gradle memakai Gradle 8.9
+      # yang selaras dengan AGP 8.6.1 (lihat DEVELOPMENT.md).
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -36,10 +36,17 @@ jobs:
 
       - name: Decode keystore dari Secrets
         run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 kosong — build unsigned dilewati signing."
+            exit 0
+          fi
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release-key.jks
 
       - name: Buat key.properties dari Secrets
         run: |
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            exit 0
+          fi
           cat > key.properties <<EOF
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}

@@ -183,17 +183,24 @@ class TranslationRepository {
                     resp.models.map { it.name.removePrefix("models/") }.filter { it.contains("gemini", ignoreCase = true) }
                 }
                 PROVIDER_OLLAMA -> {
-                    try {
+                    // Coba endpoint OpenAI-compat dulu; fallback ke /api/tags
+                    // untuk semua kegagalan (termasuk HTTP 404), bukan hanya
+                    // error koneksi.
+                    val openAiCompat = try {
                         val response = client.get("$root/v1/models")
                         checkResponseStatus(response, config.id)
-                        val resp = response.body<OpenAiModelsResponse>()
-                        resp.data.map { it.id }
+                        response.body<OpenAiModelsResponse>().data.map { it.id }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
                     } catch (e: Exception) {
-                        if (e is IllegalStateException) throw e
+                        emptyList<String>()
+                    }
+                    if (openAiCompat.isNotEmpty()) {
+                        openAiCompat
+                    } else {
                         val response = client.get("${cleanBaseUrlWithoutV1(config.baseUrl)}/api/tags")
                         checkResponseStatus(response, config.id)
-                        val resp = response.body<OllamaModelsResponse>()
-                        resp.models.map { it.name }
+                        response.body<OllamaModelsResponse>().models.map { it.name }
                     }
                 }
                 else -> {

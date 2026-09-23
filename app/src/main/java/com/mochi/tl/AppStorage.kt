@@ -12,9 +12,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import android.util.Log
+import androidx.room.withTransaction
 
 /**
  * Penyimpanan aplikasi — semua inisialisasi berat (EncryptedPrefs, Room DB)
@@ -46,15 +48,18 @@ class AppStorage(context: Context) {
     private val db: MochiTlDatabase
         get() = dbRef ?: run {
             Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
-                .allowMainThreadQueries()
                 .build()
         }.also { dbRef = it }
 
     init {
         // Migration dilakukan sekali di background, bukan di main thread.
         storageScope.launch {
-            if (!plain.getBoolean("room_migrated", false)) {
-                migrateLegacyPrefsToRoom()
+            try {
+                if (!plain.getBoolean("room_migrated", false)) {
+                    migrateLegacyPrefsToRoom()
+                }
+            } catch (e: Exception) {
+                Log.w("AppStorage", "Migrasi legacy prefs ke Room gagal", e)
             }
         }
     }
@@ -126,33 +131,43 @@ class AppStorage(context: Context) {
     fun historyFlow(): Flow<List<TranslationRecord>> = flow { emit(db.historyDao().getAll()) }.flowOn(Dispatchers.IO)
     fun glossaryFlow(): Flow<List<GlossaryEntry>> = flow { emit(db.glossaryDao().getAll()) }.flowOn(Dispatchers.IO)
 
-    // ===== Write operations (async) =====
+    // ===== Write operations (async, transactional) =====
+
+    private fun persistReplace(run: suspend MochiTlDatabase.() -> Unit) {
+        storageScope.launch {
+            try {
+                db.withTransaction { run() }
+            } catch (e: Exception) {
+                Log.w("AppStorage", "Gagal menyimpan koleksi ke Room", e)
+            }
+        }
+    }
 
     fun saveProjectsAsync(items: List<TranslationProject>) {
-        storageScope.launch {
-            db.projectDao().clear()
-            db.projectDao().upsertAll(items)
+        persistReplace {
+            projectDao().clear()
+            projectDao().upsertAll(items)
         }
     }
 
     fun savePromptsAsync(items: List<PromptTemplate>) {
-        storageScope.launch {
-            db.promptDao().clear()
-            db.promptDao().upsertAll(items)
+        persistReplace {
+            promptDao().clear()
+            promptDao().upsertAll(items)
         }
     }
 
     fun saveHistoryAsync(items: List<TranslationRecord>) {
-        storageScope.launch {
-            db.historyDao().clear()
-            db.historyDao().upsertAll(items.take(100))
+        persistReplace {
+            historyDao().clear()
+            historyDao().upsertAll(items.take(MAX_HISTORY_ITEMS))
         }
     }
 
     fun saveGlossaryAsync(items: List<GlossaryEntry>) {
-        storageScope.launch {
-            db.glossaryDao().clear()
-            db.glossaryDao().upsertAll(items)
+        persistReplace {
+            glossaryDao().clear()
+            glossaryDao().upsertAll(items)
         }
     }
 
@@ -168,5 +183,11 @@ class AppStorage(context: Context) {
 
     var maxTokens: Int
         get() = plain.getInt("max_tokens", 8192)
-        set(value) { plain.edit().putInt("max_tokens", value).apply() }
+        set(value) { plain.edit().putInt("max_tokens", value.coerceIn(MIN_MAX_TOKENS, MAX_MAX_TOKENS)).apply() }
+
+    private companion object {
+        const val MAX_HISTORY_ITEMS = 100
+        const val MIN_MAX_TOKENS = 256
+        const val MAX_MAX_TOKENS = 32768
+    }
 }

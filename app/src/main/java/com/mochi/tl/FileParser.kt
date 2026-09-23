@@ -31,21 +31,33 @@ object FileParser {
 
     enum class Format { TXT, EPUB, DOCX, PDF }
 
-    fun readText(context: Context, uri: Uri): String = try {
-        when (detectFormat(context, uri)) {
-            Format.TXT -> context.contentResolver.openInputStream(uri)?.use(::txtText).orEmpty()
-            Format.DOCX -> context.contentResolver.openInputStream(uri)?.use(::docxText)
-                ?: throw IOException("Tidak dapat membuka file")
-            Format.EPUB -> context.contentResolver.openInputStream(uri)?.use(::epubText)
-                ?: throw IOException("Tidak dapat membuka file")
-            Format.PDF -> {
-                PDFBoxResourceLoader.init(context.applicationContext)
-                context.contentResolver.openInputStream(uri)?.use(::pdfText)
+    fun readText(context: Context, uri: Uri): String {
+        try {
+            return when (detectFormat(context, uri)) {
+                Format.TXT -> context.contentResolver.openInputStream(uri)?.use(::txtText).orEmpty()
+                Format.DOCX -> context.contentResolver.openInputStream(uri)?.use(::docxText)
                     ?: throw IOException("Tidak dapat membuka file")
+                Format.EPUB -> context.contentResolver.openInputStream(uri)?.use(::epubText)
+                    ?: throw IOException("Tidak dapat membuka file")
+                Format.PDF -> {
+                    PDFBoxResourceLoader.init(context.applicationContext)
+                    context.contentResolver.openInputStream(uri)?.use(::pdfText)
+                        ?: throw IOException("Tidak dapat membuka file")
+                }
+            }
+        } catch (e: Exception) {
+            throw IOException("Gagal membaca file: ${e.message ?: "format tidak didukung"}", e)
+        }
+    }
+
+    /** Nama tampilan file dari ContentResolver (bukan ID numerik content://). */
+    fun getDisplayName(context: Context, uri: Uri): String {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                cursor.getString(0)?.takeIf { it.isNotBlank() }?.let { return it }
             }
         }
-    } catch (e: Exception) {
-        "Gagal membaca file: ${e.message ?: "format tidak didukung"}"
+        return uri.lastPathSegment ?: "Dokumen"
     }
 
     /** Deteksi format dari ekstensi nama file, fallback ke TXT. */
@@ -108,15 +120,18 @@ object FileParser {
         val sb = StringBuilder()
         var insideTextRun = false
         var event = parser.eventType
+        // FEATURE_PROCESS_NAMESPACES=false → getName() mengembalikan kualifikasi
+        // penuh seperti "w:t"; cocokkan local name setelah ":".
+        fun localName(raw: String): String = raw.substringAfterLast(':')
         while (event != XmlPullParser.END_DOCUMENT) {
             when (event) {
-                XmlPullParser.START_TAG -> when (parser.name) {
+                XmlPullParser.START_TAG -> when (localName(parser.name)) {
                     "t" -> insideTextRun = true
                     "p", "br" -> sb.append('\n')
                     "tab" -> sb.append('\t')
                 }
                 XmlPullParser.TEXT -> if (insideTextRun) sb.append(parser.text)
-                XmlPullParser.END_TAG -> if (parser.name == "t") insideTextRun = false
+                XmlPullParser.END_TAG -> if (localName(parser.name) == "t") insideTextRun = false
             }
             event = parser.next()
         }

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-green)](https://www.android.com/)
-[![Kotlin](https://img.shields.io/badge/Kotlin-1.9-purple)](https://kotlinlang.org/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-purple)](https://kotlinlang.org/)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](#)
 
 Aplikasi penerjemah AI untuk manga, manhwa, light novel, dan dokumen — dibangun dengan Kotlin Native + Jetpack Compose, terhubung ke Gemini, OpenAI, OpenRouter, Ollama, atau LM Studio.

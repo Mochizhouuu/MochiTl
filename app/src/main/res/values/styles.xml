@@ -2,7 +2,7 @@
 <resources>
     <style name="Theme.MochiTL" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#C65F7A</item>
+        <item name="android:colorAccent">#386A36</item>
         <item name="android:navigationBarColor">#FFF8FA</item>
         <item name="android:statusBarColor">#FFF8FA</item>
         <item name="android:windowLightStatusBar">true</item>

@@ -42,26 +42,62 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val vm: MochiViewModel by viewModels()
+    private var pendingExport: Pair<String, String>? = null
+
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            pendingExport?.let { (name, content) -> writeExportFile(name, content) }
+        } else {
+            Toast.makeText(this, "Izin penyimpanan ditolak — gagal menyimpan file", Toast.LENGTH_SHORT).show()
+        }
+        pendingExport = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             var isDarkTheme by remember { mutableStateOf(true) }
+            var isOledTheme by remember { mutableStateOf(false) }
 
-            MochiAppTheme(darkTheme = isDarkTheme) {
+            MochiAppTheme(
+                darkTheme = isDarkTheme,
+                isOledMode = isOledTheme,
+                dynamicColor = false
+            ) {
                 LaunchedEffect(Unit) {
                     vm.loadInitialData()
                 }
                 MochiApp(
                     vm = vm,
                     isDarkTheme = isDarkTheme,
-                    onToggleTheme = { isDarkTheme = !isDarkTheme }
+                    isOledTheme = isOledTheme,
+                    onToggleTheme = { isDarkTheme = !isDarkTheme },
+                    onToggleOled = { isOledTheme = !isOledTheme }
                 )
             }
         }
     }
 
     fun exportText(name: String, content: String) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
+            val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (granted) {
+                writeExportFile(name, content)
+            } else {
+                pendingExport = name to content
+                storagePermissionLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        } else {
+            writeExportFile(name, content)
+        }
+    }
+
+    private fun writeExportFile(name: String, content: String) {
         runCatching {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
@@ -94,7 +130,9 @@ internal enum class Screen { HOME, TEXT, FILE, PROJECTS, PROMPTS, GLOSSARY, HIST
 fun MochiApp(
     vm: MochiViewModel,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit
+    isOledTheme: Boolean = false,
+    onToggleTheme: () -> Unit,
+    onToggleOled: () -> Unit = {}
 ) {
     var screen by remember { mutableStateOf(Screen.HOME) }
     var docPageTarget by remember { mutableIntStateOf(0) }
@@ -152,7 +190,11 @@ fun MochiApp(
             MochiNavigationBar {
                 MochiNavigationBarItem(
                     selected = screen == Screen.HOME || screen == Screen.TEXT || screen == Screen.FILE,
-                    onClick = { screen = Screen.TEXT },
+                    onClick = {
+                        // Tab workspace: tetap di layar teks/file yang sedang aktif;
+                        // dari layar lain buka dashboard HOME.
+                        if (screen != Screen.TEXT && screen != Screen.FILE) screen = Screen.HOME
+                    },
                     icon = { Icon(Icons.Default.Translate, contentDescription = "Terjemahkan") },
                     label = { Text("Terjemah", style = MaterialTheme.typography.labelMedium) }
                 )
@@ -197,7 +239,11 @@ fun MochiApp(
                 label = "screenTransition"
             ) { targetScreen ->
                 when (targetScreen) {
-                    Screen.HOME, Screen.TEXT -> TextTranslationScreen(vm, onSwitchToFile = { screen = Screen.FILE })
+                    Screen.HOME -> HomeScreen(
+                        vm = vm,
+                        navigate = { screen = it }
+                    )
+                    Screen.TEXT -> TextTranslationScreen(vm, onSwitchToFile = { screen = Screen.FILE })
                     Screen.FILE -> FileTranslationScreen(vm, onSwitchToText = { screen = Screen.TEXT })
                     Screen.PROJECTS -> ProjectsScreen(vm)
                     Screen.PROMPTS -> PromptScreen(
@@ -219,7 +265,9 @@ fun MochiApp(
                     Screen.SETTINGS -> SettingsScreen(
                         vm = vm,
                         isDarkTheme = isDarkTheme,
-                        onToggleTheme = onToggleTheme
+                        isOledTheme = isOledTheme,
+                        onToggleTheme = onToggleTheme,
+                        onToggleOled = onToggleOled
                     )
                     Screen.ABOUT -> DocumentationScreen(initialPage = docPageTarget)
                 }

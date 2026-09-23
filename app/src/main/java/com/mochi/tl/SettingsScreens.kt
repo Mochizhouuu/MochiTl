@@ -225,6 +225,8 @@ internal fun SettingsScreen(
         modelText = vm.customModel ?: activeProvider.model
         testStatus = null
         fetchModelStatus = null
+        showModelDropdown = false
+        vm.availableModels.value = emptyList()
     }
 
     SettingsScreenContent(
@@ -428,9 +430,13 @@ internal fun SettingsScreenContent(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("API Key (${activeProvider.name})") },
                 singleLine = true,
+                visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     IconButton(onClick = onToggleKeyVisible) {
-                        Icon(if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle key")
+                        Icon(
+                            if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (isKeyVisible) "Sembunyikan API key" else "Tampilkan API key"
+                        )
                     }
                 }
             )
@@ -617,23 +623,17 @@ internal fun SettingsScreenContent(
         Slider(
             value = maxTokens.toFloat(),
             onValueChange = {
-                val v = (it.toInt() / 256) * 256
-                onMaxTokensChange(v)
+                val v = ((it.toInt() + 127) / 256) * 256
+                onMaxTokensChange(v.coerceIn(256, 32768))
             },
-            valueRange = 1024f..16384f
+            valueRange = 256f..32768f
         )
 
-        // Single Solid Emerald Primary CTA Button (Max 1 per screen)
-        MochiButton(
-            onClick = { /* Settings auto-saved on change */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-        ) {
-            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Simpan Provider", fontWeight = FontWeight.Bold)
-        }
+        Text(
+            "Pengaturan tersimpan otomatis saat diubah.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

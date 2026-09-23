@@ -10,7 +10,7 @@ MochiTL dibangun menggunakan teknologi Android modern berbasis Kotlin Native:
 
 - **UI Framework:** Jetpack Compose (Material 3)
 - **Database:** Room Database (Proyek, Prompt, Glosarium, Riwayat)
-- **Preferences:** Datastore Preferences & EncryptedSharedPreferences (Android Keystore)
+- **Preferences:** SharedPreferences & EncryptedSharedPreferences (Android Keystore)
 - **Network Client:** Ktor Client (Android Engine) + kotlinx.serialization
 - **Dokumen Parser:** PDFBox Android
 - **Target SDK:** 35 (minSdk 26)

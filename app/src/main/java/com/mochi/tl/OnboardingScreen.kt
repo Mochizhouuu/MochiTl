@@ -157,9 +157,13 @@ internal fun OnboardingScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("API Key (${activeProvider.name})") },
                         singleLine = true,
+                        visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
-                                Icon(if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = "Toggle key")
+                                Icon(
+                                    if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (isKeyVisible) "Sembunyikan API key" else "Tampilkan API key"
+                                )
                             }
                         }
                     )
