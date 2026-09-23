@@ -912,7 +912,8 @@ internal fun FileTranslationScreen(
                     HorizontalDivider()
                     MochiOutlinedButton(
                         onClick = {
-                            val base = fileName?.substringBeforeLast('.', fileName) ?: "file"
+                            val currentName = fileName
+                            val base = currentName?.substringBeforeLast('.', currentName) ?: "file"
                             val name = "terjemahan_$base.txt"
                             (context as? MainActivity)?.exportText(name, state.output)
                         },

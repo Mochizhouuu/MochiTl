@@ -133,10 +133,10 @@ class AppStorage(context: Context) {
 
     // ===== Write operations (async, transactional) =====
 
-    private fun persistReplace(run: suspend MochiTlDatabase.() -> Unit) {
+    private fun persistReplace(action: suspend MochiTlDatabase.() -> Unit) {
         storageScope.launch {
             try {
-                db.withTransaction { run() }
+                db.withTransaction { action(db) }
             } catch (e: Exception) {
                 Log.w("AppStorage", "Gagal menyimpan koleksi ke Room", e)
             }
