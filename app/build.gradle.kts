@@ -66,7 +66,14 @@ android {
         jvmTarget = "17"
     }
 
-
+    splits {
+        abi {
+            isEnable = false
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
 
     buildFeatures { compose = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
