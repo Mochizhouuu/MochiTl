@@ -2,10 +2,12 @@ package com.mochi.tl
 
 import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.Migration
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.Upsert
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 // ===== DAOs =====
 
@@ -69,6 +71,18 @@ interface HistoryDao {
     suspend fun clear()
 }
 
+@Dao
+interface TranslationCacheDao {
+    @Query("SELECT * FROM translation_cache WHERE cacheKey = :key LIMIT 1")
+    suspend fun get(key: String): TranslationCache?
+
+    @Upsert
+    suspend fun upsert(item: TranslationCache)
+
+    @Query("DELETE FROM translation_cache")
+    suspend fun clear()
+}
+
 // ===== Database =====
 
 /**
@@ -81,9 +95,10 @@ interface HistoryDao {
         PromptTemplate::class,
         GlossaryEntry::class,
         TranslationProject::class,
-        TranslationRecord::class
+        TranslationRecord::class,
+        TranslationCache::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(StringListConverter::class)
@@ -92,4 +107,18 @@ abstract class MochiTlDatabase : RoomDatabase() {
     abstract fun glossaryDao(): GlossaryDao
     abstract fun projectDao(): ProjectDao
     abstract fun historyDao(): HistoryDao
+    abstract fun translationCacheDao(): TranslationCacheDao
+
+    companion object {
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `translation_cache` (" +
+                        "`cacheKey` TEXT PRIMARY KEY NOT NULL, " +
+                        "`translatedText` TEXT NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL)"
+                )
+            }
+        }
+    }
 }

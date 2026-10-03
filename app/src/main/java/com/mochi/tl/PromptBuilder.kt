@@ -220,8 +220,12 @@ object PromptBuilder {
      * Tag penutup/sumber di dalam chunk di-escape agar tidak bisa
      * "menutup" pembungkus lebih awal.
      */
-    fun formatChunkText(chunk: String): String {
-        return "<source_text>\n${sanitizeSourceChunk(chunk)}\n</source_text>"
+    fun formatChunkText(chunk: String, previousChunk: String? = null): String {
+        val contextPrefix = previousChunk?.let {
+            val head = it.take(800).trim()
+            if (head.isNotEmpty()) "<context_from_previous_chunk>\n$head\n</context_from_previous_chunk>\n\n" else ""
+        }.orEmpty()
+        return "$contextPrefix<source_text>\n${sanitizeSourceChunk(chunk)}\n</source_text>"
     }
 
     private fun sanitizeSourceChunk(text: String): String =

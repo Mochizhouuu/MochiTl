@@ -199,6 +199,21 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
 
     fun selectPrompt(prompt: PromptTemplate) { activePrompt.value = prompt }
 
+    private fun joinedChunkTexts(list: List<ChunkResult>): String =
+        list.filter { it.status == ChunkStatus.DONE || it.status == ChunkStatus.TRANSLATING }
+            .joinToString("\n") { it.translatedText }
+
+    private var lastChunksText: List<String> = emptyList()
+    private var lastSystemPrompt: String = ""
+    private var lastSourceLanguage: String = LanguageOptions.AUTO_DETECT
+    private var lastTargetLanguage: String = "Indonesia"
+
+    private fun cacheKeyFor(providerId: String, model: String, sourceLanguage: String, target: String, chunk: String): String {
+        val input = "$providerId|$model|$sourceLanguage|$target|$chunk"
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+        return digest.joinToString("") { b -> "%02x".format(b) }
+    }
+
     fun translate(
         prompt: PromptTemplate = activePrompt.value,
         source: String = _state.value.input,
@@ -227,34 +242,111 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                     return@launch
                 }
 
+                lastSystemPrompt = systemPrompt
+                lastSourceLanguage = sourceLanguage
+                lastTargetLanguage = target
+
                 val chunks = chunkByParagraphs(source)
+                lastChunksText = chunks
                 val results = MutableList(chunks.size) { "" }
+                _state.update { it.copy(
+                    chunkResults = chunks.mapIndexed { index, _ -> ChunkResult(index, "", status = ChunkStatus.PENDING) },
+                    cacheHits = 0
+                ) }
 
                 chunks.forEachIndexed { index, chunk ->
                     while (_state.value.isPaused) delay(PAUSE_CHECK_INTERVAL_MS)
 
                     try {
-                        results[index] = translateChunkWithRetry(
-                            provider = currentProvider,
-                            apiKey = snapshotApiKey,
-                            systemPrompt = systemPrompt,
-                            chunk = PromptBuilder.formatChunkText(chunk)
-                        )
+                        val key = cacheKeyFor(currentProvider.id, currentProvider.model, sourceLanguage, target, chunk)
+                        val cached = storage.getCachedTranslation(key)
+                        if (cached != null) {
+                            results[index] = cached.translatedText
+                            _state.update { st ->
+                                val list = st.chunkResults.toMutableList()
+                                list[index] = ChunkResult(index, cached.translatedText, fromCache = true, status = ChunkStatus.DONE)
+                                st.copy(
+                                    chunkResults = list,
+                                    cacheHits = st.cacheHits + 1,
+                                    output = joinedChunkTexts(list),
+                                    progress = (index + 1).toFloat() / chunks.size
+                                )
+                            }
+                            return@forEachIndexed
+                        }
+
+                        _state.update { st ->
+                            val list = st.chunkResults.toMutableList()
+                            list[index] = list[index].copy(status = ChunkStatus.TRANSLATING, translatedText = "")
+                            st.copy(chunkResults = list)
+                        }
+
+                        val prev = if (index > 0) chunks[index - 1] else null
+                        val text = if (_state.value.streamingEnabled) {
+                            var partial = ""
+                            try {
+                                repository.translateStreaming(
+                                    provider = currentProvider,
+                                    apiKey = snapshotApiKey,
+                                    systemPrompt = systemPrompt,
+                                    text = PromptBuilder.formatChunkText(chunk, prev),
+                                    onChunk = { piece ->
+                                        partial += piece
+                                        _state.update { st ->
+                                            val list = st.chunkResults.toMutableList()
+                                            list[index] = ChunkResult(index, partial, status = ChunkStatus.TRANSLATING)
+                                            st.copy(chunkResults = list, output = joinedChunkTexts(list), progress = index.toFloat() / chunks.size)
+                                        }
+                                    }
+                                )
+                                if (partial.isBlank()) throw IllegalStateException("Respon AI kosong atau tidak valid.")
+                                partial
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // Fallback ke terjemahan biasa kalau streaming gagal.
+                                translateChunkWithRetry(
+                                    provider = currentProvider,
+                                    apiKey = snapshotApiKey,
+                                    systemPrompt = systemPrompt,
+                                    chunk = PromptBuilder.formatChunkText(chunk, prev)
+                                )
+                            }
+                        } else {
+                            translateChunkWithRetry(
+                                provider = currentProvider,
+                                apiKey = snapshotApiKey,
+                                systemPrompt = systemPrompt,
+                                chunk = PromptBuilder.formatChunkText(chunk, prev)
+                            )
+                        }
+
+                        results[index] = text
+                        storage.putCachedTranslation(key, text)
+                        _state.update { st ->
+                            val list = st.chunkResults.toMutableList()
+                            list[index] = ChunkResult(index, text, fromCache = false, status = ChunkStatus.DONE)
+                            st.copy(
+                                chunkResults = list,
+                                output = joinedChunkTexts(list),
+                                progress = (index + 1).toFloat() / chunks.size
+                            )
+                        }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        val partial = results.filter { it.isNotBlank() }.joinToString("\n")
-                        _state.update {
-                            it.copy(
-                                output = partial,
+                        _state.update { st ->
+                            val list = st.chunkResults.toMutableList()
+                            list[index] = list[index].copy(status = ChunkStatus.ERROR, translatedText = "")
+                            st.copy(
+                                chunkResults = list,
+                                output = joinedChunkTexts(list),
                                 isTranslating = false,
                                 error = "Gagal di bagian ${index + 1}/${chunks.size}: ${e.message ?: "terjemahan gagal"}. Hasil sebagian sudah disimpan."
                             )
                         }
                         return@launch
                     }
-
-                    _state.update { it.copy(progress = (index + 1).toFloat() / chunks.size) }
                 }
 
                 val result = results.joinToString("\n")
@@ -275,6 +367,50 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 throw e
             } catch (e: Exception) {
                 _state.update { it.copy(isTranslating = false, error = e.message ?: "Terjemahan gagal") }
+            }
+        }
+    }
+
+    /** Terjemahkan ulang satu bagian spesifik (chunk) tanpa mengulang dokumen penuh. */
+    fun retryChunk(index: Int) {
+        val chunks = lastChunksText
+        if (index < 0 || index >= chunks.size || lastSystemPrompt.isBlank()) return
+        val snapshot = snapshotProvider()
+        val validation = validateResolvedProvider(snapshot.provider)
+        if (validation.isFailure) {
+            _state.update { it.copy(error = validation.exceptionOrNull()?.message ?: "Konfigurasi provider tidak valid") }
+            return
+        }
+        job?.cancel()
+        job = viewModelScope.launch {
+            try {
+                _state.update { st ->
+                    val list = st.chunkResults.toMutableList()
+                    list[index] = ChunkResult(index, "", status = ChunkStatus.TRANSLATING)
+                    st.copy(chunkResults = list, error = null)
+                }
+                val key = cacheKeyFor(snapshot.provider.id, snapshot.provider.model, lastSourceLanguage, lastTargetLanguage, chunks[index])
+                val prev = if (index > 0) chunks[index - 1] else null
+                val text = translateChunkWithRetry(
+                    provider = snapshot.provider,
+                    apiKey = snapshot.apiKey,
+                    systemPrompt = lastSystemPrompt,
+                    chunk = PromptBuilder.formatChunkText(chunks[index], prev)
+                )
+                storage.putCachedTranslation(key, text)
+                _state.update { st ->
+                    val list = st.chunkResults.toMutableList()
+                    list[index] = ChunkResult(index, text, fromCache = false, status = ChunkStatus.DONE)
+                    st.copy(chunkResults = list, output = joinedChunkTexts(list), progress = 1f)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.update { st ->
+                    val list = st.chunkResults.toMutableList()
+                    list[index] = list[index].copy(status = ChunkStatus.ERROR, translatedText = "")
+                    st.copy(chunkResults = list, output = joinedChunkTexts(list), error = "Bagian ${index + 1} gagal: ${e.message ?: "terjemahan gagal"}")
+                }
             }
         }
     }

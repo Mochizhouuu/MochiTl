@@ -70,7 +70,28 @@ data class TranslationState(
     val isTranslating: Boolean = false,
     val isPaused: Boolean = false,
     val error: String? = null,
-    val progress: Float = 0f
+    val progress: Float = 0f,
+    val chunkResults: List<ChunkResult> = emptyList(),
+    val cacheHits: Int = 0,
+    val streamingEnabled: Boolean = true
+)
+
+enum class ChunkStatus { PENDING, TRANSLATING, DONE, ERROR }
+
+data class ChunkResult(
+    val index: Int,
+    val translatedText: String,
+    val fromCache: Boolean = false,
+    val status: ChunkStatus = ChunkStatus.PENDING
+)
+
+/** Cache terjemahan per chunk untuk resume sejati setelah app mati. */
+@Serializable
+@Entity(tableName = "translation_cache")
+data class TranslationCache(
+    @PrimaryKey val cacheKey: String,
+    val translatedText: String,
+    val createdAt: Long = System.currentTimeMillis()
 )
 
 object BuiltIns {

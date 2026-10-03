@@ -8,17 +8,28 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
+import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readUTF8Line
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+@Serializable private data class StreamChoice(val delta: StreamDelta? = null)
+@Serializable private data class StreamDelta(val content: String? = null)
+@Serializable private data class StreamResponse(val choices: List<StreamChoice> = emptyList())
+
 @Serializable private data class ChatMessage(val role: String, val content: String)
-@Serializable private data class ChatRequest(val model: String, val messages: List<ChatMessage>, val temperature: Double = 0.3, val max_tokens: Int = 8192)
+@Serializable private data class ChatRequest(val model: String, val messages: List<ChatMessage>, val temperature: Double = 0.3, val max_tokens: Int = 8192, val stream: Boolean = false)
 @Serializable private data class ChatChoice(val message: ChatMessage, val finish_reason: String? = null)
 @Serializable private data class ChatResponse(val choices: List<ChatChoice> = emptyList())
 @Serializable private data class GeminiGenerationConfig(val temperature: Double, val maxOutputTokens: Int)
@@ -165,6 +176,111 @@ class TranslationRepository {
                 throw IllegalStateException("Respon Gemini kosong atau terblokir filter keamanan.")
             }
             return result
+        } catch (e: Exception) {
+            if (e is IllegalStateException || e is IllegalArgumentException) throw e
+            throw formatNetworkException(e, config.id, config.baseUrl)
+        }
+    }
+
+    /**
+     * Terjemahan streaming (SSE). Mengembalikan teks penuh sekaligus mengirim
+     * setiap potongan ke [onChunk] agar UI dapat menampilkan progres realtime.
+     */
+    suspend fun translateStreaming(
+        config: ProviderConfig,
+        apiKey: String?,
+        systemPrompt: String,
+        text: String,
+        temperature: Double = DEFAULT_TEMPERATURE,
+        maxTokens: Int = DEFAULT_MAX_TOKENS,
+        onChunk: (suspend (String) -> Unit)? = null
+    ): String = if (config.id == PROVIDER_GEMINI) {
+        streamGemini(config, apiKey.orEmpty(), systemPrompt, text, temperature, maxTokens, onChunk)
+    } else {
+        streamOpenAiCompatible(config, apiKey, systemPrompt, text, temperature, maxTokens, onChunk)
+    }
+
+    private suspend fun streamOpenAiCompatible(
+        config: ProviderConfig,
+        apiKey: String?,
+        systemPrompt: String,
+        text: String,
+        temperature: Double,
+        maxTokens: Int,
+        onChunk: (suspend (String) -> Unit)?
+    ): String {
+        val root = cleanBaseUrl(config.baseUrl)
+        return try {
+            client.preparePost("$root/v1/chat/completions") {
+                contentType(ContentType.Application.Json)
+                apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") }
+                setBody(ChatRequest(config.model, listOf(ChatMessage("system", systemPrompt), ChatMessage("user", text)), temperature, maxTokens, stream = true))
+            }.execute {
+                checkResponseStatus(this, config.id)
+                val channel: ByteReadChannel = this.body()
+                val sb = StringBuilder()
+                while (!channel.isClosedForRead) {
+                    val line = channel.readUTF8Line() ?: break
+                    val trimmed = line.trim()
+                    if (trimmed == "[DONE]") break
+                    val data = trimmed.removePrefix("data:").trim()
+                    if (data.isEmpty() || data == "[DONE]") continue
+                    val payload = runCatching { json.decodeFromString<StreamResponse>(data) }.getOrNull()
+                    if (payload == null) continue
+                    val content = payload.choices.firstOrNull()?.delta?.content.orEmpty()
+                    if (content.isNotEmpty()) {
+                        sb.append(content)
+                        onChunk?.invoke(content)
+                    }
+                }
+                sb.toString()
+            }
+        } catch (e: Exception) {
+            if (e is IllegalStateException) throw e
+            throw formatNetworkException(e, config.id, config.baseUrl)
+        }
+    }
+
+    private suspend fun streamGemini(
+        config: ProviderConfig,
+        apiKey: String,
+        systemPrompt: String,
+        text: String,
+        temperature: Double,
+        maxTokens: Int,
+        onChunk: (suspend (String) -> Unit)?
+    ): String {
+        require(apiKey.isNotBlank()) { "API key Gemini belum diatur." }
+        val root = cleanBaseUrlWithoutV1(config.baseUrl)
+        return try {
+            client.preparePost("$root/v1beta/models/${config.model}:streamGenerateContent?alt=sse") {
+                contentType(ContentType.Application.Json)
+                header("x-goog-api-key", apiKey)
+                setBody(GeminiRequest(
+                    contents = listOf(GeminiContent(listOf(GeminiPart(text)))),
+                    systemInstruction = GeminiContent(listOf(GeminiPart(systemPrompt)), "system"),
+                    generationConfig = GeminiGenerationConfig(temperature = temperature, maxOutputTokens = maxTokens)
+                ))
+            }.execute {
+                checkResponseStatus(this, config.id)
+                val channel: ByteReadChannel = this.body()
+                val sb = StringBuilder()
+                while (!channel.isClosedForRead) {
+                    val line = channel.readUTF8Line() ?: break
+                    val trimmed = line.trim()
+                    if (trimmed.isEmpty()) continue
+                    val data = trimmed.removePrefix("data:").trim()
+                    if (data == "[DONE]") break
+                    val payload = runCatching { json.decodeFromString<GeminiResponse>(data) }.getOrNull()
+                    if (payload == null) continue
+                    val chunk = payload.candidates.firstOrNull()?.content?.parts?.joinToString("") { it.text }?.trim().orEmpty()
+                    if (chunk.isNotEmpty()) {
+                        sb.append(chunk)
+                        onChunk?.invoke(chunk)
+                    }
+                }
+                sb.toString()
+            }
         } catch (e: Exception) {
             if (e is IllegalStateException || e is IllegalArgumentException) throw e
             throw formatNetworkException(e, config.id, config.baseUrl)

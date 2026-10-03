@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -59,7 +60,8 @@ class AppStorage(context: Context) {
     private val dbLock = Any()
     private val db: MochiTlDatabase
         get() = dbRef ?: synchronized(dbLock) {
-            dbRef ?: Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
+            dbRef ?:             Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
+                .addMigrations(MochiTlDatabase.MIGRATION_1_2)
                 .build().also { dbRef = it }
         }
 
@@ -195,6 +197,18 @@ class AppStorage(context: Context) {
             glossaryDao().clear()
             glossaryDao().upsertAll(items)
         }
+    }
+
+    // ===== Cache terjemahan per chunk =====
+    suspend fun getCachedTranslation(key: String): TranslationCache? =
+        db.translationCacheDao().get(key)
+
+    suspend fun putCachedTranslation(key: String, text: String) {
+        db.translationCacheDao().upsert(TranslationCache(key, text))
+    }
+
+    suspend fun clearTranslationCache() {
+        db.translationCacheDao().clear()
     }
 
     // ===== Pengaturan umum =====

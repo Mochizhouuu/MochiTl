@@ -89,7 +89,8 @@ internal fun TextTranslationScreen(
                 type = "text/plain"
             }
             context.startActivity(Intent.createChooser(sendIntent, "Bagikan Terjemahan"))
-        }
+        },
+        onRetranslateChunk = { vm.retryChunk(it) }
     )
 }
 
@@ -117,7 +118,8 @@ internal fun TextTranslationScreenContent(
     onExportText: (String, String) -> Unit,
     onCopyText: (String) -> Unit,
     onPasteText: () -> Unit,
-    onShareText: (String) -> Unit
+    onShareText: (String) -> Unit,
+    onRetranslateChunk: (Int) -> Unit = {}
 ) {
     var showProviderMenu by remember { mutableStateOf(false) }
     var showPromptMenu by remember { mutableStateOf(false) }
@@ -623,6 +625,34 @@ internal fun TextTranslationScreenContent(
                     }
                 }
             }
+
+            if (state.chunkResults.isNotEmpty()) {
+                MochiCard {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Status Per-Bagian", style = MaterialTheme.typography.labelSmall)
+                        state.chunkResults.forEach { cr ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val label = when (cr.status) {
+                                    ChunkStatus.PENDING -> "Menunggu"
+                                    ChunkStatus.TRANSLATING -> "Menerjemahkan..."
+                                    ChunkStatus.DONE -> if (cr.fromCache) "Selesai (cache)" else "Selesai"
+                                    ChunkStatus.ERROR -> "Gagal"
+                                }
+                                Text("Bagian ${cr.index + 1}: $label", style = MaterialTheme.typography.bodySmall)
+                                if (cr.status == ChunkStatus.ERROR || cr.status == ChunkStatus.DONE) {
+                                    MochiOutlinedButton(onClick = { onRetranslateChunk(cr.index) }) {
+                                        Text("Ulang", fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -924,6 +954,35 @@ internal fun FileTranslationScreen(
                         Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Simpan File Dokumen", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // Chunk status / retry controls
+        if (state.chunkResults.isNotEmpty()) {
+            MochiCard {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Status Per-Bagian", style = MaterialTheme.typography.labelSmall)
+                    state.chunkResults.forEach { cr ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val label = when (cr.status) {
+                                ChunkStatus.PENDING -> "Menunggu"
+                                ChunkStatus.TRANSLATING -> "Menerjemahkan..."
+                                ChunkStatus.DONE -> if (cr.fromCache) "Selesai (cache)" else "Selesai"
+                                ChunkStatus.ERROR -> "Gagal"
+                            }
+                            Text("Bagian ${cr.index + 1}: $label", style = MaterialTheme.typography.bodySmall)
+                            if (cr.status == ChunkStatus.ERROR || cr.status == ChunkStatus.DONE) {
+                                MochiOutlinedButton(onClick = { vm.retryChunk(cr.index) }) {
+                                    Text("Ulang", fontSize = 12.sp)
+                                }
+                            }
+                        }
                     }
                 }
             }
