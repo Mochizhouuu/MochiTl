@@ -286,7 +286,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                             var partial = ""
                             try {
                                 repository.translateStreaming(
-                                    provider = currentProvider,
+                                    config = currentProvider,
                                     apiKey = snapshotApiKey,
                                     systemPrompt = systemPrompt,
                                     text = PromptBuilder.formatChunkText(chunk, prev),

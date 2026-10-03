@@ -215,9 +215,9 @@ class TranslationRepository {
                 contentType(ContentType.Application.Json)
                 apiKey?.takeIf { it.isNotBlank() }?.let { header("Authorization", "Bearer $it") }
                 setBody(ChatRequest(config.model, listOf(ChatMessage("system", systemPrompt), ChatMessage("user", text)), temperature, maxTokens, stream = true))
-            }.execute {
-                checkResponseStatus(this, config.id)
-                val channel: ByteReadChannel = this.body()
+            }.execute { response ->
+                checkResponseStatus(response, config.id)
+                val channel: ByteReadChannel = response.body()
                 val sb = StringBuilder()
                 while (!channel.isClosedForRead) {
                     val line = channel.readUTF8Line() ?: break
@@ -261,9 +261,9 @@ class TranslationRepository {
                     systemInstruction = GeminiContent(listOf(GeminiPart(systemPrompt)), "system"),
                     generationConfig = GeminiGenerationConfig(temperature = temperature, maxOutputTokens = maxTokens)
                 ))
-            }.execute {
-                checkResponseStatus(this, config.id)
-                val channel: ByteReadChannel = this.body()
+            }.execute { response ->
+                checkResponseStatus(response, config.id)
+                val channel: ByteReadChannel = response.body()
                 val sb = StringBuilder()
                 while (!channel.isClosedForRead) {
                     val line = channel.readUTF8Line() ?: break

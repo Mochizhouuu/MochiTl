@@ -2,11 +2,11 @@ package com.mochi.tl
 
 import androidx.room.Dao
 import androidx.room.Database
-import androidx.room.Migration
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.Upsert
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 // ===== DAOs =====
