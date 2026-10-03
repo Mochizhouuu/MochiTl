@@ -84,7 +84,7 @@ interface HistoryDao {
         TranslationRecord::class
     ],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(StringListConverter::class)
 abstract class MochiTlDatabase : RoomDatabase() {

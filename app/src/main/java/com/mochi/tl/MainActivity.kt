@@ -58,8 +58,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var isDarkTheme by remember { mutableStateOf(true) }
-            var isOledTheme by remember { mutableStateOf(false) }
+            var isDarkTheme by remember { mutableStateOf(vm.darkThemePref) }
+            var isOledTheme by remember { mutableStateOf(vm.oledThemePref) }
 
             MochiAppTheme(
                 darkTheme = isDarkTheme,
@@ -73,8 +73,14 @@ class MainActivity : ComponentActivity() {
                     vm = vm,
                     isDarkTheme = isDarkTheme,
                     isOledTheme = isOledTheme,
-                    onToggleTheme = { isDarkTheme = !isDarkTheme },
-                    onToggleOled = { isOledTheme = !isOledTheme }
+                    onToggleTheme = {
+                        isDarkTheme = !isDarkTheme
+                        vm.darkThemePref = isDarkTheme
+                    },
+                    onToggleOled = {
+                        isOledTheme = !isOledTheme
+                        vm.oledThemePref = isOledTheme
+                    }
                 )
             }
         }
@@ -99,15 +105,19 @@ class MainActivity : ComponentActivity() {
 
     private fun writeExportFile(name: String, content: String) {
         runCatching {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val finalName = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
                     put(MediaStore.Downloads.DISPLAY_NAME, name)
                     put(MediaStore.Downloads.MIME_TYPE, "text/plain")
                     put(MediaStore.Downloads.RELATIVE_PATH, "Download/MochiTL")
                 }
-                contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)?.let { uri: Uri ->
-                    contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) }
-                }
+                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: throw java.io.IOException("Tidak dapat membuat entri MediaStore")
+                contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) }
+                // Nama final bisa berubah (mis. name (1).txt) — baca dari MediaStore.
+                contentResolver.query(uri, arrayOf(MediaStore.Downloads.DISPLAY_NAME), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) c.getString(0) else null
+                } ?: name
             } else {
                 @Suppress("DEPRECATION")
                 val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
@@ -115,8 +125,9 @@ class MainActivity : ComponentActivity() {
                 )
                 val targetDir = java.io.File(downloadsDir, "MochiTL").apply { mkdirs() }
                 java.io.File(targetDir, name).writeText(content)
+                name
             }
-            Toast.makeText(this, "File disimpan di Download/MochiTL/$name", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "File disimpan di Download/MochiTL/$finalName", Toast.LENGTH_LONG).show()
         }.onFailure {
             Toast.makeText(this, "Gagal menyimpan file: ${it.message}", Toast.LENGTH_SHORT).show()
         }

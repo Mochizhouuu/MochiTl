@@ -19,7 +19,7 @@ import kotlinx.serialization.json.Json
 
 @Serializable private data class ChatMessage(val role: String, val content: String)
 @Serializable private data class ChatRequest(val model: String, val messages: List<ChatMessage>, val temperature: Double = 0.3, val max_tokens: Int = 8192)
-@Serializable private data class ChatChoice(val message: ChatMessage)
+@Serializable private data class ChatChoice(val message: ChatMessage, val finish_reason: String? = null)
 @Serializable private data class ChatResponse(val choices: List<ChatChoice> = emptyList())
 @Serializable private data class GeminiGenerationConfig(val temperature: Double, val maxOutputTokens: Int)
 @Serializable private data class GeminiPart(val text: String)
@@ -29,7 +29,7 @@ import kotlinx.serialization.json.Json
     val systemInstruction: GeminiContent? = null,
     val generationConfig: GeminiGenerationConfig? = null
 )
-@Serializable private data class GeminiCandidate(val content: GeminiContent? = null)
+@Serializable private data class GeminiCandidate(val content: GeminiContent? = null, val finishReason: String? = null)
 @Serializable private data class GeminiResponse(val candidates: List<GeminiCandidate> = emptyList())
 
 @Serializable private data class OpenAiModelItem(val id: String)
@@ -118,7 +118,12 @@ class TranslationRepository {
             }
             checkResponseStatus(response, config.id)
             val chatResponse = response.body<ChatResponse>()
-            val result = chatResponse.choices.firstOrNull()?.message?.content?.trim().orEmpty()
+            val choice = chatResponse.choices.firstOrNull()
+            val finish = choice?.finish_reason
+            if (finish == "length") {
+                throw IllegalStateException("Terjemahan terpotong karena Max Tokens. Naikkan batas token di Pengaturan.")
+            }
+            val result = choice?.message?.content?.trim().orEmpty()
             if (result.isBlank()) {
                 throw IllegalStateException("Respon AI kosong atau tidak valid.")
             }
@@ -151,7 +156,11 @@ class TranslationRepository {
             }
             checkResponseStatus(response, config.id)
             val geminiResponse = response.body<GeminiResponse>()
-            val result = geminiResponse.candidates.firstOrNull()?.content?.parts?.joinToString("") { it.text }?.trim().orEmpty()
+            val candidate = geminiResponse.candidates.firstOrNull()
+            if (candidate?.finishReason == "MAX_TOKENS") {
+                throw IllegalStateException("Terjemahan terpotong karena Max Tokens. Naikkan batas token di Pengaturan.")
+            }
+            val result = candidate?.content?.parts?.joinToString("") { it.text }?.trim().orEmpty()
             if (result.isBlank()) {
                 throw IllegalStateException("Respon Gemini kosong atau terblokir filter keamanan.")
             }

@@ -309,7 +309,8 @@ internal fun SettingsScreen(
         },
         onDismissModelDropdown = { showModelDropdown = false },
         onToggleModelDropdown = { if (availableModels.isNotEmpty()) showModelDropdown = !showModelDropdown },
-        getStorageModelForProvider = vm::storageModelFor
+        getStorageModelForProvider = vm::storageModelFor,
+        secureDegraded = vm.isSecureStorageDegraded()
     )
 }
 
@@ -349,7 +350,8 @@ internal fun SettingsScreenContent(
     onTestConnection: () -> Unit,
     onDismissModelDropdown: () -> Unit,
     onToggleModelDropdown: () -> Unit,
-    getStorageModelForProvider: (String) -> String?
+    getStorageModelForProvider: (String) -> String?,
+    secureDegraded: Boolean = false
 ) {
     val isLocalProvider = !activeProvider.requiresApiKey || activeProvider.id in listOf("ollama", "lmstudio")
 
@@ -363,6 +365,16 @@ internal fun SettingsScreenContent(
     ) {
         // Theme Settings
         SectionTitle("Tampilan & Tema")
+        if (secureDegraded) {
+            MochiCard {
+                Text(
+                    "⚠ Penyimpanan kredensial sedang dalam mode TIDAK AMAN (fallback plaintext). Masukkan ulang API key setelah penyimpanan aman dipulihkan.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
         MochiCard {
             Column(
                 modifier = Modifier.padding(14.dp),

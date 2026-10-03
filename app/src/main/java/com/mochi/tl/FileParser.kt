@@ -60,7 +60,7 @@ object FileParser {
         return uri.lastPathSegment ?: "Dokumen"
     }
 
-    /** Deteksi format dari ekstensi nama file, fallback ke TXT. */
+    /** Deteksi format dari ekstensi nama file, fallback ke magic bytes. */
     fun detectFormat(context: Context, uri: Uri): Format {
         var name: String? = null
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
@@ -68,11 +68,56 @@ object FileParser {
                 name = cursor.getString(0)
             }
         }
-        return when (name?.lowercase()?.substringAfterLast('.')?.takeIf { it.isNotEmpty() }) {
+        val ext = name?.lowercase()?.substringAfterLast('.')?.takeIf { it.isNotEmpty() && it != name?.lowercase() }
+        return when (ext) {
             "epub" -> Format.EPUB
             "docx" -> Format.DOCX
             "pdf" -> Format.PDF
-            else -> Format.TXT
+            "txt" -> Format.TXT
+            "doc", "rtf", "odt", "cbz", "cbr", "mobi", "azw3" ->
+                throw IOException("Format .$ext belum didukung — ekstrak teks menjadi TXT/EPUB/DOCX/PDF dulu.")
+            else -> {
+                // Nama tidak jelas → sniff magic bytes.
+                val magic = sniffMagic(context, uri)
+                when {
+                    magic == "%PDF" -> Format.PDF
+                    magic == "PK" -> detectZipFormat(context, uri) ?: Format.TXT
+                    else -> Format.TXT
+                }
+            }
+        }
+    }
+
+    private fun sniffMagic(context: Context, uri: Uri): String? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val head = ByteArray(4)
+                val read = input.read(head)
+                if (read <= 0) return null
+                when {
+                    head[0] == 0x25.toByte() && head[1] == 0x50.toByte() -> "%PDF"
+                    head[0] == 0x50.toByte() && head[1] == 0x4B.toByte() -> "PK"
+                    else -> null
+                }
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** Kenali DOCX/EPUB dari isi ZIP ketika ekstensi tidak tersedia. */
+    private fun detectZipFormat(context: Context, uri: Uri): Format? {
+        return try {
+            val data = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+            forEachZipEntry(data) { entry, _ ->
+                when {
+                    entry.name.equals("word/document.xml", ignoreCase = true) -> Format.DOCX
+                    entry.name.equals("META-INF/container.xml", ignoreCase = true) -> Format.EPUB
+                    else -> null
+                }
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -153,7 +198,7 @@ object FileParser {
         // Pass 2: OPF -> daftar href dokumen konten sesuai urutan spine.
         val opfDir = opfPath.substringBeforeLast('/', "")
         val spineHrefs = forEachZipEntry(data) { entry, stream ->
-            if (entry.name == opfPath) parseOpfSpine(readZipEntryBytes(stream)) else null
+            if (entry.name.equals(opfPath, ignoreCase = true)) parseOpfSpine(readZipEntryBytes(stream)) else null
         } ?: throw IOException("OPF tidak ditemukan — bukan file EPUB valid")
 
         val normalizedHrefs = spineHrefs.mapNotNull { href ->
@@ -172,7 +217,9 @@ object FileParser {
         val sb = StringBuilder()
         for (href in normalizedHrefs) {
             val text = forEachZipEntry(data) { entry, stream ->
-                if (entry.name == href && isHtmlEntry(entry.name)) xhtmlText(readZipEntryBytes(stream)) else null
+                if ((entry.name.equals(href, ignoreCase = true) || entry.name.replace('\\', '/').equals(href, ignoreCase = true)) && isHtmlEntry(entry.name)) {
+                    xhtmlText(readZipEntryBytes(stream))
+                } else null
             }
             if (!text.isNullOrBlank()) {
                 sb.append(text).append("\n\n")

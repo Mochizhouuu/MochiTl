@@ -69,7 +69,11 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     private val storage = AppStorage(app)
     private val repository = TranslationRepository()
 
-    private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** Storage kredensial tidak aman (fallback plaintext) — tampilkan peringatan. */
+    fun isSecureStorageDegraded(): Boolean = storage.isSecureStorageDegraded()
+
+    // Single-thread untuk write ke storage supaya tidak ada lost update.
+    private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     private fun persistAsync(block: suspend () -> Unit) {
         storageScope.launch { block() }
@@ -115,7 +119,11 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setInput(value: String) { _state.update { it.copy(input = value, error = null) } }
     fun setOutput(value: String) { _state.update { it.copy(output = value) } }
-    fun selectProvider(provider: ProviderConfig) { activeProvider.value = provider }
+    fun selectProvider(provider: ProviderConfig) {
+        activeProvider.value = provider
+        // Daftar model milik provider lama tidak boleh tampil untuk provider baru.
+        availableModels.value = emptyList()
+    }
     fun setModelForActiveProvider(model: String) {
         customModel = model
     }
@@ -129,9 +137,52 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
         return res
     }
 
+    /**
+     * Snapshot atomic provider+credentials: dibaca sekali di awal operasi supaya
+     * ganti provider di tengah jalan tidak mengirim API key provider A ke provider B.
+     */
+    private data class ProviderSnapshot(
+        val provider: ProviderConfig,
+        val apiKey: String?,
+        val baseUrl: String?,
+        val model: String?
+    )
+
+    private fun snapshotProvider(): ProviderSnapshot {
+        val prov = activeProvider.value
+        val id = prov.id
+        val customUrl = storage.baseUrl(id)
+        val modelToUse = storage.model(id)?.takeIf { it.isNotBlank() } ?: prov.model
+        var resolved = prov.copy(model = modelToUse)
+        if (!customUrl.isNullOrBlank()) resolved = resolved.copy(baseUrl = customUrl)
+        return ProviderSnapshot(
+            provider = resolved,
+            apiKey = storage.apiKey(id),
+            baseUrl = customUrl,
+            model = storage.model(id)
+        )
+    }
+
+    /** Tolak plaintext HTTP untuk provider cloud (selain loopback/LAN). */
+    private fun validateResolvedProvider(p: ProviderConfig): Result<Unit> {
+        val url = p.baseUrl.trim().lowercase()
+        val isLocal = p.id == "ollama" || p.id == "lmstudio" ||
+            url.contains("localhost") || url.contains("127.0.0.1") || url.contains("10.0.2.2") ||
+            url.contains("192.168.") || url.contains("10.")
+        return if (url.startsWith("http://") && !isLocal) {
+            Result.failure(IllegalStateException(
+                "Base URL memakai HTTP untuk provider non-lokal (${p.name}). Gunakan HTTPS atau provider lokal."
+            ))
+        } else {
+            Result.success(Unit)
+        }
+    }
+
     suspend fun fetchModelsForActiveProvider(): Result<List<String>> {
-        val currentProvider = resolveCurrentProvider()
-        val result = repository.fetchModels(currentProvider, apiKey)
+        val snap = snapshotProvider()
+        val validation = validateResolvedProvider(snap.provider)
+        if (validation.isFailure) return Result.failure(validation.exceptionOrNull()!!)
+        val result = repository.fetchModels(snap.provider, snap.apiKey)
         if (result.isSuccess) {
             availableModels.value = result.getOrDefault(emptyList())
         }
@@ -167,7 +218,14 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                     glossaryList = glossary.value,
                     project = project
                 )
-                val currentProvider = resolveCurrentProvider()
+                val snapshot = snapshotProvider()
+                val currentProvider = snapshot.provider
+                val snapshotApiKey = snapshot.apiKey
+                val validation = validateResolvedProvider(currentProvider)
+                if (validation.isFailure) {
+                    _state.update { it.copy(isTranslating = false, error = validation.exceptionOrNull()?.message ?: "Konfigurasi provider tidak valid") }
+                    return@launch
+                }
 
                 val chunks = chunkByParagraphs(source)
                 val results = MutableList(chunks.size) { "" }
@@ -178,6 +236,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                     try {
                         results[index] = translateChunkWithRetry(
                             provider = currentProvider,
+                            apiKey = snapshotApiKey,
                             systemPrompt = systemPrompt,
                             chunk = PromptBuilder.formatChunkText(chunk)
                         )
@@ -221,8 +280,10 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun testConnection(): Result<Unit> {
-        val currentProvider = resolveCurrentProvider()
-        return repository.testConnection(currentProvider, apiKey)
+        val snapshot = snapshotProvider()
+        val validation = validateResolvedProvider(snapshot.provider)
+        if (validation.isFailure) return validation
+        return repository.testConnection(snapshot.provider, snapshot.apiKey)
     }
 
     fun pause() { _state.update { it.copy(isPaused = true) } }
@@ -234,6 +295,7 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun translateChunkWithRetry(
         provider: ProviderConfig,
+        apiKey: String?,
         systemPrompt: String,
         chunk: String,
     ): String {
@@ -252,10 +314,22 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
                 throw e
             } catch (e: Exception) {
                 lastError = e
-                if (attempt < MAX_ATTEMPTS - 1) delay(RETRY_BACKOFF_MS * (attempt + 1))
+                if (!isRetryable(e) || attempt >= MAX_ATTEMPTS - 1) throw e
+                delay(RETRY_BACKOFF_MS * (attempt + 1))
             }
         }
         throw lastError ?: IllegalStateException("Terjemahan gagal")
+    }
+
+    /** Bedakan error yang layak dicoba ulang (rate-limit/server/network) dari error final. */
+    private fun isRetryable(e: Exception): Boolean {
+        val msg = (e.message ?: "").lowercase()
+        val finalMarkers = listOf("401", "api key salah", "invalid", "filter keamanan", "kosong", "dipotong")
+        // 429/rate limit dan 5xx/network layak retry; 4xx selain 429 umumnya final.
+        if (msg.contains("429") || msg.contains("rate") || msg.contains("server") ||
+            msg.contains("timeout") || msg.contains("koneksi") || msg.contains("network") ||
+            msg.contains("Gagal terhubung")) return true
+        return finalMarkers.none { msg.contains(it) }
     }
 
     fun savePrompt(prompt: PromptTemplate) {
@@ -377,6 +451,14 @@ class MochiViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setAutoSave(value: Boolean) { storage.autoSaveHistory = value }
     fun autoSave(): Boolean = storage.autoSaveHistory
+
+    var darkThemePref: Boolean
+        get() = storage.darkTheme
+        set(value) { storage.darkTheme = value }
+
+    var oledThemePref: Boolean
+        get() = storage.oledTheme
+        set(value) { storage.oledTheme = value }
 
     /**
      * Memuat semua koleksi data dari storage secara asinkron saat VM dibuat.

@@ -28,28 +28,40 @@ class AppStorage(context: Context) {
 
     val json = Json { ignoreUnknownKeys = true }
 
-    private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Single-thread dispatcher untuk write — mencegah lost update ( B-5 ).
+    private val storageScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     /** Encrypted prefs dibuat lazy — hanya saat dibutuhkan (first access). */
     private var secureRef: SharedPreferences? = null
     private fun getSecure(): SharedPreferences = secureRef ?: runCatching {
         createEncryptedPrefs(appContext)
     }.getOrElse {
+        Log.w("AppStorage", "EncryptedSharedPreferences gagal dibuka; mencoba recreate", it)
         runCatching {
+            // Master key kemungkinan rusak — hapus prefs lama agar bisa recreate.
             appContext.deleteSharedPreferences("mochitl_secure")
             createEncryptedPrefs(appContext)
         }.getOrElse {
+            Log.e("AppStorage", "Storage aman gagal total — fallback plaintext", it)
+            // Fallback sepenuhnya menyadari kondisi rusak: tandai degraded
+            // agar UI bisa memperingatkan pengguna, JANGAN diam-diam.
+            plain.edit().putBoolean("secure_storage_degraded", true).apply()
             appContext.getSharedPreferences("mochitl_secure_fallback", Context.MODE_PRIVATE)
         }
     }.also { secureRef = it }
 
+    /** True jika penyimpanan kredensial jatuh ke fallback plaintext. */
+    fun isSecureStorageDegraded(): Boolean =
+        plain.getBoolean("secure_storage_degraded", false)
+
     /** Database dibuat lazy — baru diakses saat collection flow dipanggil. */
-    private var dbRef: MochiTlDatabase? = null
+    @Volatile private var dbRef: MochiTlDatabase? = null
+    private val dbLock = Any()
     private val db: MochiTlDatabase
-        get() = dbRef ?: run {
-            Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
-                .build()
-        }.also { dbRef = it }
+        get() = dbRef ?: synchronized(dbLock) {
+            dbRef ?: Room.databaseBuilder(appContext, MochiTlDatabase::class.java, "mochitl.db")
+                .build().also { dbRef = it }
+        }
 
     init {
         // Migration dilakukan sekali di background, bukan di main thread.
@@ -105,18 +117,32 @@ class AppStorage(context: Context) {
     // ===== Kredensial & pengaturan provider =====
     // Semua akses ke secure prefs tetap async — UI tidak menunggu.
 
+    /** Cache memori untuk prefs terenkripsi agar UI tidak dekripsi setiap rekomposisi. */
+    private val secureCache = mutableMapOf<String, String?>()
+    private fun readSecure(key: String): String? {
+        return if (secureCache.containsKey(key)) {
+            secureCache[key]
+        } else {
+            getSecure().getString(key, null).also { secureCache[key] = it }
+        }
+    }
+
     fun saveApiKey(providerId: String, value: String) {
+        secureCache["api_key_$providerId"] = value
         getSecure().edit().putString("api_key_$providerId", value).apply()
     }
-    fun apiKey(providerId: String): String? = getSecure().getString("api_key_$providerId", null)
+    fun apiKey(providerId: String): String? = readSecure("api_key_$providerId")
     fun deleteApiKey(providerId: String) {
+        secureCache.remove("api_key_$providerId")
         getSecure().edit().remove("api_key_$providerId").apply()
     }
     fun saveBaseUrl(providerId: String, value: String) {
+        secureCache["base_url_$providerId"] = value
         getSecure().edit().putString("base_url_$providerId", value).apply()
     }
-    fun baseUrl(providerId: String): String? = getSecure().getString("base_url_$providerId", null)
+    fun baseUrl(providerId: String): String? = readSecure("base_url_$providerId")
     fun deleteBaseUrl(providerId: String) {
+        secureCache.remove("base_url_$providerId")
         getSecure().edit().remove("base_url_$providerId").apply()
     }
 
@@ -176,6 +202,14 @@ class AppStorage(context: Context) {
     var autoSaveHistory: Boolean
         get() = plain.getBoolean("auto_save_history", false)
         set(value) { plain.edit().putBoolean("auto_save_history", value).apply() }
+
+    var darkTheme: Boolean
+        get() = plain.getBoolean("pref_dark_theme", true)
+        set(value) { plain.edit().putBoolean("pref_dark_theme", value).apply() }
+
+    var oledTheme: Boolean
+        get() = plain.getBoolean("pref_oled_theme", false)
+        set(value) { plain.edit().putBoolean("pref_oled_theme", value).apply() }
 
     var temperature: Float
         get() = plain.getFloat("temperature", 0.3f)

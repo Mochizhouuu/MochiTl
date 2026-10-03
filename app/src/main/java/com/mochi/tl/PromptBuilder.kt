@@ -106,8 +106,8 @@ object PromptBuilder {
                 appendLine("You MUST use these exact translations. Do not substitute alternatives:")
                 appendLine()
                 activeGlossary.forEach { entry ->
-                    append("• `${entry.source}` → `${entry.target}`")
-                    if (entry.note.isNotBlank()) append("  [${entry.note}]")
+                    append("• `${sanitizeForPrompt(entry.source)}` → `${sanitizeForPrompt(entry.target)}`")
+                    if (entry.note.isNotBlank()) append("  [${sanitizeForPrompt(entry.note)}]")
                     appendLine()
                 }
                 appendLine()
@@ -127,7 +127,11 @@ object PromptBuilder {
             lang.isBlank() || lang == LanguageOptions.AUTO_DETECT -> "the source language (auto-detected)"
             lang.lowercase().contains("jepang") || lang == "Japanese" -> "Japanese"
             lang.lowercase().contains("korea") || lang == "Korea" || lang == "Korean" -> "Korean"
-            lang.lowercase().contains("mandarin") || lang == "Mandarin Simplified" || lang == "Mandarin Traditional" -> "Mandarin Chinese"
+            lang.lowercase().contains("mandarin") || lang == "Mandarin Simplified" || lang == "Mandarin Traditional" -> when {
+                lang.lowercase().contains("simplified") -> "Simplified Mandarin Chinese"
+                lang.lowercase().contains("traditional") -> "Traditional Mandarin Chinese"
+                else -> "Mandarin Chinese"
+            }
             lang.lowercase().contains("inggris") || lang == "Inggris" || lang == "English" -> "English"
             lang.lowercase().contains("cina") || lang == "Cina" -> "Chinese"
             lang.lowercase().contains("prancis") || lang == "Prancis" || lang == "French" -> "French"
@@ -143,7 +147,6 @@ object PromptBuilder {
             lang.lowercase().contains("italia") || lang == "Italia" || lang == "Italian" -> "Italian"
             lang.lowercase().contains("turki") || lang == "Turki" || lang == "Turkish" -> "Turkish"
             lang.lowercase().contains("persia") || lang == "Persia" || lang == "Persian" -> "Persian"
-            lang.lowercase().contains(" arab") || lang == "Arab" -> "Arabic"
             else -> "the source language"
         }
     }
@@ -214,8 +217,22 @@ object PromptBuilder {
     /**
      * Membungkus teks chunk dengan tag <source_text> untuk mencegah
      * prompt injection dan memastikan AI memahami ini sebagai data mentah.
+     * Tag penutup/sumber di dalam chunk di-escape agar tidak bisa
+     * "menutup" pembungkus lebih awal.
      */
     fun formatChunkText(chunk: String): String {
-        return "<source_text>\n$chunk\n</source_text>"
+        return "<source_text>\n${sanitizeSourceChunk(chunk)}\n</source_text>"
     }
+
+    private fun sanitizeSourceChunk(text: String): String =
+        text
+            .replace("<source_text>", "⟨source_text⟩")
+            .replace("</source_text>", "⟨/source_text⟩")
+            .replace("`", "'")
+
+    private fun sanitizeForPrompt(text: String): String =
+        text
+            .replace("<", "‹")
+            .replace(">", "›")
+            .replace("`", "'")
 }
