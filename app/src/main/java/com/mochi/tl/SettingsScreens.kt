@@ -353,7 +353,7 @@ internal fun SettingsScreenContent(
     getStorageModelForProvider: (String) -> String?,
     secureDegraded: Boolean = false
 ) {
-    val isLocalProvider = !activeProvider.requiresApiKey || activeProvider.id in listOf("ollama", "lmstudio")
+    val isLocalProvider = !activeProvider.requiresApiKey || activeProvider.id in listOf("ollama", "lmstudio", "openaicompatible")
 
     Column(
         modifier = Modifier
