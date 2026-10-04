@@ -57,11 +57,11 @@ jobs:
       - name: Jalankan unit test
         run: gradle :app:testDebugUnitTest --no-daemon
 
-      - name: Build APK release (signed jika secret tersedia, unsigned jika tidak)
-        run: gradle :app:assembleRelease --no-daemon
-
       - name: Build APK debug
         run: gradle :app:assembleDebug --no-daemon
+
+      - name: Build APK release (signed jika secret tersedia, unsigned jika tidak)
+        run: gradle :app:assembleRelease --no-daemon
 
       - name: Hapus keystore dari runner
         if: always()
